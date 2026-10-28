@@ -1,6 +1,6 @@
 const { test, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const handler = require('../api/[...path].js');
+const handler = require('../api/index.js');
 
 const originalFetch = global.fetch;
 afterEach(() => { global.fetch = originalFetch; });
@@ -25,6 +25,17 @@ test('static output and fallback configuration', async () => {
         assert.equal(res.body.success, false);
         assert.match(res.body.message, /trình duyệt/);
     }
+});
+
+test('nested rewritten API routes reach the handler', async () => {
+    const res = {
+        status(code) { this.statusCode = code; return this; },
+        setHeader() { return this; },
+        end(value) { this.body = JSON.parse(value); }
+    };
+    await handler({ url: '/api/index?__route=license/config', method: 'GET', query: { __route: 'license/config' }, headers: {} }, res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body, { required: false });
 });
 
 test('login and profile forward credentials and bearer token to Portal', async () => {

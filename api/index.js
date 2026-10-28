@@ -56,7 +56,9 @@ async function proxy(res, method, endpoint, data, token, gateway) {
 
 module.exports = async function handler(req, res) {
     const url = new URL(req.url, 'http://localhost');
-    const path = url.pathname.replace(/^\/api\/?/, '');
+    // Vercel rewrites nested routes to this single function using __route.
+    const rewrittenPath = req.query && req.query.__route;
+    const path = typeof rewrittenPath === 'string' ? rewrittenPath : url.pathname.replace(/^\/api\/?/, '');
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
 
     if (path === 'license/config' && req.method === 'GET') return json(res, 200, { required: false });

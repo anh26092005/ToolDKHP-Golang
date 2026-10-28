@@ -1,5 +1,8 @@
 {
   "framework": null,
   "buildCommand": "node -e \"const fs=require('fs'); console.log('Project root:',process.cwd()); if(!fs.existsSync('public/index.html')) { console.error('Missing public/index.html'); process.exit(1); } console.log('Static output: public/index.html');\"",
-  "outputDirectory": "public"
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index?__route=:path*" }
+  ]
 }
