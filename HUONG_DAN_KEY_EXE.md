@@ -1,14 +1,14 @@
 # Key cho bản EXE và trang quản trị Cloudflare
 
-## 1. Triển khai Cloudflare Pages
+## 1. Triển khai Cloudflare Worker
 
-Deploy repo này bằng Cloudflare Pages, dùng thư mục đầu ra `public` và Pages Functions trong `functions/`. Trong cài đặt Pages, gắn KV namespace vào binding `DKHP_KEYS` (xem `wrangler.toml`). Trang quản trị ở `https://<ten-trang>.pages.dev/admin.html` và API key ở `/api/keys/`.
+Deploy repo này bằng Cloudflare Workers, sử dụng lệnh `npx wrangler deploy` tại thư mục gốc. Worker dùng thư mục `public` và API trong `functions/`. KV namespace được gắn qua binding `DKHP_KEYS` trong `wrangler.toml`; ID phải thuộc tài khoản Cloudflare đang triển khai. Trang quản trị ở `https://<domain-worker>/admin.html` và API key ở `/api/keys/`.
 
-Tạo secret `ADMIN_PASSWORD` trong phần biến môi trường của Cloudflare Pages cho môi trường deploy đang dùng, rồi deploy lại. Sử dụng một mật khẩu mới đủ mạnh; mật khẩu cũ có trong source không còn được dùng bởi Pages Function. Admin đăng nhập bằng mật khẩu secret đó. Không đưa mật khẩu hoặc thông tin tài khoản vào source.
+Tạo secret `ADMIN_PASSWORD` trong phần biến môi trường của Cloudflare Worker cho môi trường deploy đang dùng, rồi deploy lại. Sử dụng một mật khẩu mới đủ mạnh; mật khẩu cũ có trong source không còn được dùng bởi API Cloudflare. Admin đăng nhập bằng mật khẩu secret đó. Không đưa mật khẩu hoặc thông tin tài khoản vào source.
 
 ## 2. Build EXE
 
-Cài Go, chạy `build-go.bat` và nhập URL gốc HTTPS của Pages khi được hỏi, ví dụ `https://ten-trang.pages.dev` (không thêm `/admin.html` hoặc `/api`). Có thể đặt biến môi trường `KEY_SERVER_URL` trước khi chạy để bỏ qua câu hỏi. Script tạo `dkhp-tool-golang.exe` tại thư mục gốc; URL key được gắn vào file lúc build. Build lại khi URL thay đổi.
+Cài Go, chạy `build-go.bat` và nhập URL gốc HTTPS của Worker khi được hỏi, ví dụ `https://ten-worker.ten-tai-khoan.workers.dev` (không thêm `/admin.html` hoặc `/api`). Có thể đặt biến môi trường `KEY_SERVER_URL` trước khi chạy để bỏ qua câu hỏi. Script tạo `dkhp-tool-golang.exe` tại thư mục gốc; URL key được gắn vào file lúc build. Build lại khi URL thay đổi.
 
 EXE cần thư mục `public` cạnh file để phục vụ giao diện. Phát hành EXE cùng thư mục này. Khởi chạy EXE và truy cập địa chỉ localhost được in ra màn hình.
 

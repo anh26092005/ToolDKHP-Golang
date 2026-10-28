@@ -1,7 +1,11 @@
-name = "tool-dkhp"
+name = "tooldkhp-golang"
+main = "cloudflare-entry.js"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "public"
 
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
 
 [[kv_namespaces]]
 binding = "DKHP_KEYS"

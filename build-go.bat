@@ -7,9 +7,9 @@ echo.
 
 cd /d "%~dp0go-backend"
 
-if not defined KEY_SERVER_URL set /p "KEY_SERVER_URL=Nhap URL Cloudflare Pages (https://...): "
+if not defined KEY_SERVER_URL set /p "KEY_SERVER_URL=Nhap URL Cloudflare Worker (https://...): "
 if not defined KEY_SERVER_URL (
-    echo [x] Can URL Cloudflare Pages de build EXE co key.
+    echo [x] Can URL Cloudflare Worker de build EXE co key.
     pause
     exit /b 1
 )
