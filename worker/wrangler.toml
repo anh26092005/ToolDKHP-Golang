@@ -1,0 +1,15 @@
+name = "dkhp-keys"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# KV Namespace cho Keys
+# Tạo bằng lệnh: wrangler kv:namespace create "KEYS"
+# Sau đó thay id bên dưới bằng ID thật
+kv_namespaces = [
+  { binding = "KEYS", id = "YOUR_KV_NAMESPACE_ID" }
+]
+
+# Preview namespace cho local dev (optional)
+# kv_namespaces = [
+#   { binding = "KEYS", id = "YOUR_KV_NAMESPACE_ID", preview_id = "YOUR_PREVIEW_KV_ID" }
+# ]

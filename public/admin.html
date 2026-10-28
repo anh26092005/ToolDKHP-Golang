@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - ĐKHP Web</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .admin-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .admin-login {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+
+        .admin-login .card {
+            padding: 2rem;
+        }
+
+        .admin-login h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .generate-form {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: flex-end;
+        }
+
+        .generate-form .form-group {
+            margin-bottom: 0;
+        }
+
+        .key-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .key-table th,
+        .key-table td {
+            padding: 0.75rem 0.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .key-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .key-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .key-code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            user-select: all;
+        }
+
+        .key-code:hover {
+            text-decoration: underline;
+        }
+
+        .key-type {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .key-type.regular {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .key-type.shared {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .key-status {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .key-status.active {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .key-status.bound {
+            background: #e1f5fe;
+            color: #0277bd;
+        }
+
+        .key-status.expired {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .time-cell {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .device-cell {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .copy-toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            z-index: 1000;
+            animation: fadeInOut 2s ease;
+        }
+
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+
+            15% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            85% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Login Page -->
+        <div id="admin-login-page" class="admin-login">
+            <div class="card">
+                <h2>🔐 Admin Panel</h2>
+                <form id="admin-login-form">
+                    <div class="form-group">
+                        <label for="admin-password">Mật khẩu Admin</label>
+                        <input type="password" id="admin-password" placeholder="Nhập mật khẩu..." required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
+                    <p id="admin-login-error" class="error-message hidden"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="admin-dashboard" class="admin-container hidden">
+            <header class="admin-header">
+                <h1>🔑 Quản lý Keys</h1>
+                <div>
+                    <a href="/" class="btn btn-outline btn-sm">← Về trang chính</a>
+                    <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Đăng xuất</button>
+                </div>
+            </header>
+
+            <!-- Stats -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-label">Tổng Keys</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-regular">0</div>
+                    <div class="stat-label">Key thường</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-shared">0</div>
+                    <div class="stat-label">Key chung</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-bound">0</div>
+                    <div class="stat-label">Đã bind</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-used">0</div>
+                    <div class="stat-label">Dùng hôm nay</div>
+                </div>
+            </div>
+
+            <!-- Generate Key -->
+            <div class="card">
+                <h3>Tạo Key mới</h3>
+                <div class="generate-form">
+                    <div class="form-group">
+                        <label>Loại Key</label>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="keyType" value="regular" checked> Key thường
+                            </label>
+                            <label>
+                                <input type="radio" name="keyType" value="shared"> Key chung
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="duration">Thời hạn</label>
+                        <select id="duration">
+                            <option value="1day">1 ngày</option>
+                            <option value="7days" selected>7 ngày</option>
+                            <option value="30days">30 ngày</option>
+                            <option value="forever">Vĩnh viễn</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="customKey">Tên Key (Tùy chọn)</label>
+                        <input type="text" id="customKey" placeholder="Để trống = ngẫu nhiên" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 0.9rem;">
+                    </div>
+                    <button class="btn btn-primary" onclick="generateKey()">+ Tạo Key</button>
+                    <button class="btn btn-ghost" onclick="loadKeys()">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <!-- Keys Table -->
+            <div class="card">
+                <h3>Danh sách Keys</h3>
+                <div class="table-wrapper">
+                    <table class="key-table">
+                        <thead>
+                            <tr>
+                                <th>Key</th>
+                                <th>Loại</th>
+                                <th>Trạng thái</th>
+                                <th>Hết hạn</th>
+                                <th>Device</th>
+                                <th>Lần dùng</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="keys-table-body">
+                            <tr>
+                                <td colspan="7" class="empty-state">Đang tải...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script>
+        let adminPassword = localStorage.getItem('adminPassword') || '';
+
+        const loginPage = document.getElementById('admin-login-page');
+        const dashboard = document.getElementById('admin-dashboard');
+        const loginForm = document.getElementById('admin-login-form');
+        const loginError = document.getElementById('admin-login-error');
+
+        // Check if already logged in
+        if (adminPassword) {
+            validateAdminSession();
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('admin-password').value;
+
+            try {
+                const response = await fetch('/api/keys/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    adminPassword = password;
+                    localStorage.setItem('adminPassword', password);
+                    showDashboard();
+                } else {
+                    showError(result.message || 'Mật khẩu sai');
+                }
+            } catch (error) {
+                showError('Lỗi kết nối');
+            }
+        });
+
+        async function validateAdminSession() {
+            try {
+                const response = await fetch('/api/keys/admin/keys', {
+                    headers: { 'Authorization': `Bearer ${adminPassword}` }
+                });
+                if (response.ok) {
+                    showDashboard();
+                } else {
+                    adminPassword = '';
+                    localStorage.removeItem('adminPassword');
+                }
+            } catch (error) {
+                adminPassword = '';
+                localStorage.removeItem('adminPassword');
+            }
+        }
+
+        function showDashboard() {
+            loginPage.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            loadKeys();
+            loadStats();
+        }
+
+        function showError(message) {
+            loginError.textContent = message;
+            loginError.classList.remove('hidden');
+            setTimeout(() => loginError.classList.add('hidden'), 3000);
+        }
+
+        function adminLogout() {
+            adminPassword = '';
+            localStorage.removeItem('adminPassword');
+            location.reload();
+        }
+
+        async function apiCall(method, endpoint, data = null) {
+            const options = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminPassword}`
+                }
+            };
+            if (data) options.body = JSON.stringify(data);
+            const response = await fetch(`/api/keys${endpoint}`, options);
+            return response.json();
+        }
+
+        async function loadKeys() {
+            try {
+                const result = await apiCall('GET', '/admin/keys');
+                if (result.success) {
+                    renderTable(result.keys);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const result = await apiCall('GET', '/admin/stats');
+                if (result.success) {
+                    document.getElementById('stat-total').textContent = result.stats.total;
+                    document.getElementById('stat-regular').textContent = result.stats.activeRegular;
+                    document.getElementById('stat-shared').textContent = result.stats.activeShared;
+                    document.getElementById('stat-bound').textContent = result.stats.boundKeys;
+                    document.getElementById('stat-used').textContent = result.stats.usedToday;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function generateKey() {
+            const keyType = document.querySelector('input[name="keyType"]:checked').value;
+            const duration = document.getElementById('duration').value;
+            const customKey = document.getElementById('customKey').value;
+
+            const result = await apiCall('POST', '/admin/keys/generate', { keyType, duration, customKey });
+
+            if (result.success) {
+                showToast(result.message, 'success');
+                // Auto copy to clipboard
+                if (result.key) {
+                    copyToClipboard(result.key.key);
+                }
+                document.getElementById('customKey').value = '';
+                loadKeys();
+                loadStats();
+            } else {
+                showToast(result.message, 'error');
+            }
+        }
+
+        async function deleteKey(key) {
+            if (!confirm(`Xóa key ${key}?`)) return;
+
+            const result = await apiCall('DELETE', `/admin/keys/${encodeURIComponent(key)}`);
+
+            if (result.success) {
+                showToast('Đã xóa', 'success');
+                loadKeys();
+                loadStats();
+            } else {
+                showToast(result.message, 'error');
+            }
+        }
+
+        async function resetKey(key) {
+            if (!confirm(`Reset device binding cho key ${key}?`)) return;
+
+            const result = await apiCall('POST', `/admin/keys/${encodeURIComponent(key)}/reset`);
+
+            if (result.success) {
+                showToast('Đã reset device binding', 'success');
+                loadKeys();
+            } else {
+                showToast(result.message, 'error');
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyToast(`Đã copy: ${text}`);
+            });
+        }
+
+        function showCopyToast(message) {
+            const existing = document.querySelector('.copy-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'copy-toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('keys-table-body');
+            const now = new Date();
+
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Chưa có key nào. Tạo ở trên!</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = list.map(item => {
+                const isExpired = item.expiresAt && new Date(item.expiresAt) < now;
+                const isBound = item.keyType === 'regular' && item.deviceId;
+
+                let statusClass = 'active';
+                let statusText = 'Active';
+                if (isExpired) {
+                    statusClass = 'expired';
+                    statusText = 'Hết hạn';
+                } else if (isBound) {
+                    statusClass = 'bound';
+                    statusText = 'Đã bind';
+                }
+
+                return `
+                    <tr>
+                        <td class="key-code" onclick="copyToClipboard('${item.key}')" title="Click để copy">${item.key}</td>
+                        <td><span class="key-type ${item.keyType}">${item.keyType === 'shared' ? 'Chung' : 'Thường'}</span></td>
+                        <td><span class="key-status ${statusClass}">${statusText}</span></td>
+                        <td class="time-cell">${item.expiresAt ? formatTime(item.expiresAt) : '∞'}</td>
+                        <td class="device-cell" title="${item.deviceId || ''}">${item.deviceId ? item.deviceId.substring(0, 8) + '...' : '--'}</td>
+                        <td>${item.usageCount || 0}</td>
+                        <td class="action-btns">
+                            ${item.keyType === 'regular' && item.deviceId ? `<button class="btn btn-outline btn-sm" onclick="resetKey('${item.key}')" title="Reset device">🔄</button>` : ''}
+                            <button class="btn btn-danger btn-sm" onclick="deleteKey('${item.key}')" title="Xóa">🗑</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('toast-hide');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+    <script src="/js/admin-analytics.js"></script>
+    <script src="/js/analytics.js"></script>
+</body>
+
+</html>

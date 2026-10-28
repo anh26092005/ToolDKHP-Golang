@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tool ĐKHP - Đăng ký học phần tự động cho sinh viên ĐH GTVT TP.HCM">
+    <title>Tool ĐKHP UTH - Đăng ký học phần tự động</title>
+    <link rel="stylesheet" href="/css/style.css?v=7.5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Login Page -->
+        <div id="login-page" class="page active">
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="logo">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                                <path d="M4.5 12.5L9.5 17.5L19.5 6.5" stroke="white" stroke-width="3.2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <h1>Hệ Thống ĐKHP UTH</h1>
+                        <div class="ai-agent-badge">
+                            <span class="ai-agent-dot"></span>
+                            <span>Powered by AI Agent</span>
+                        </div>
+                    </div>
+                    <form id="login-form" class="login-form">
+                        <!-- Portal login -->
+                        <div id="login-portal-fields">
+                            <div class="form-group">
+                                <label for="username-input">Tên đăng nhập</label>
+                                <input type="text" id="username-input" name="username" placeholder="MSSV"
+                                    autocomplete="username">
+                            </div>
+                            <div class="form-group">
+                                <label for="password-input">Mật khẩu</label>
+                                <div class="password-input">
+                                    <input type="password" id="password-input" name="password"
+                                        placeholder="Mật khẩu portal..." autocomplete="current-password">
+                                    <button type="button" class="toggle-password"
+                                        onclick="if(typeof togglePasswordInput==='function'){togglePasswordInput();}else{const p=document.getElementById('password-input');if(p)p.type=p.type==='password'?'text':'password';}">
+                                        <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                            <circle cx="12" cy="12" r="3" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="access-key-group" class="form-group" style="margin-top: 4px; margin-bottom: 12px; display: none;">
+                            <label for="access-key-input">🔑 Mã Key kích hoạt</label>
+                            <input type="text" id="access-key-input" name="accessKey" placeholder="Nhập key kích hoạt" autocomplete="off"
+                                style="font-family: inherit; font-weight: 500;">
+                        </div>
+
+                        <div class="form-group remember-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="remember-login" checked>
+                                <span>Ghi nhớ & Tự động đăng nhập lại khi mất phiên</span>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block" id="login-btn">
+                            <span class="btn-text">Đăng nhập</span>
+                            <span class="btn-loader hidden"></span>
+                        </button>
+                        <p id="login-error" class="error-message hidden"></p>
+                    </form>
+
+                    <!-- Donate QR Section -->
+                    <div class="donate-section">
+                        <div class="donate-title">
+                            <span> Ủng hộ mình tại đây nhé:</span>
+                        </div>
+                        <div class="donate-card">
+                            <div class="donate-qr-wrapper" title="phóng to mã QR">
+                                <img id="donate-qr-image" class="donate-qr-img" src="/images/qr-donate.png?v=1.3"
+                                    alt="QR Donate">
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Page -->
+        <div id="dashboard-page" class="page">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                </div>
+                <div class="header-center">
+                    <div class="global-controls">
+                        <div class="control-group" style="display:flex;align-items:center;gap:8px;">
+                            <label style="font-weight:600;font-size:13px;color:var(--text-secondary);">Học kỳ:</label>
+                            <select id="global-semester-select" onchange="onGlobalSemesterChange(this.value)"
+                                style="padding:6px 14px;border-radius:8px;border:1px solid var(--border-color);font-size:13px;font-weight:600;color:var(--primary);background:var(--bg-primary);cursor:pointer;outline:none;box-shadow:var(--shadow-sm);">
+                                <option value="80">Học kỳ 1 (2027-2028) [Chính quy]</option>
+                                <option value="79">Học kỳ Hè (2026-2027)</option>
+                                <option value="78">Học kỳ 2 (2026-2027) [Chính quy]</option>
+                                <option value="77" selected>Học kỳ 1 (2026-2027) [Chính quy]</option>
+                                <option value="76">Học kỳ Hè (2025-2026)</option>
+                                <option value="75">Học kỳ 2 (2025-2026) [Chính quy]</option>
+                                <option value="74">Học kỳ 1 (2025-2026) [Chính quy]</option>
+                                <option value="73">Học kỳ Hè (2024-2025)</option>
+                                <option value="72">Học kỳ 2 (2024-2025) [Chính quy]</option>
+                                <option value="71">Học kỳ 1 (2024-2025) [Chính quy]</option>
+                            </select>
+                            <input type="hidden" id="global-id-dot" value="77">
+                        </div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-primary btn-sm" onclick="showGuideModal()"
+                        style="display: flex; align-items: center; gap: 6px; background-color: #1e3a8a; border-color: #1e3a8a; font-weight: 500; border-radius: 9999px; padding: 8px 16px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        Hướng dẫn
+                    </button>
+                    <div id="student-info" class="student-info">
+                        <span class="student-id" style="font-weight: 600; color: #1e3a8a;"></span>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="handleLogout()">Đăng xuất</button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Tab Navigation -->
+                <nav class="tab-nav">
+                    <button class="tab-btn active" data-tab="courses">📚 Check môn học</button>
+                    <button class="tab-btn" data-tab="register">📝 Đăng ký học phần (có thể đăng ký các mã lớp bị
+                        ẩn)</button>
+                    <button class="tab-btn" data-tab="future-schedule">🗓️ Lịch dự kiến</button>
+                    <button class="tab-btn" data-tab="schedule">📅 Lịch học</button>
+                    <button class="tab-btn" data-tab="registered">✅ Môn đã ĐK</button>
+                    <button class="tab-btn" data-tab="improvement">🔄 Học phần cải thiện</button>
+                    <button class="tab-btn" data-tab="events">🎉 Sự kiện</button>
+                </nav>
+
+                <!-- Tab Contents -->
+                <div class="tab-contents">
+                    <!-- Tab 1: Check môn học (2-Step Smart Wizard) -->
+                    <div id="tab-courses" class="tab-content active">
+                        <!-- Top Bar Controls -->
+                        <div class="course-hub-topbar">
+                            <div class="topbar-left">
+                                <div class="topbar-field">
+                                    <label class="topbar-label">HỌC KỲ & ĐỢT ĐĂNG KÝ</label>
+                                    <select id="course-semester-select" class="topbar-select"
+                                        onchange="onCourseSemesterChange(this.value)">
+                                        <option value="80">Học kỳ 1 (2027-2028) [Chính quy]</option>
+                                        <option value="79">Học kỳ Hè (2026-2027)</option>
+                                        <option value="78">Học kỳ 2 (2026-2027) [Chính quy]</option>
+                                        <option value="77" selected>Học kỳ 1 (2026-2027) - [Chính quy]</option>
+                                        <option value="76">Học kỳ Hè (2025-2026)</option>
+                                        <option value="75">Học kỳ 2 (2025-2026) [Chính quy]</option>
+                                        <option value="74">Học kỳ 1 (2025-2026) [Chính quy]</option>
+                                        <option value="73">Học kỳ Hè (2024-2025)</option>
+                                        <option value="72">Học kỳ 2 (2024-2025) [Chính quy]</option>
+                                        <option value="71">Học kỳ 1 (2024-2025) [Chính quy]</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="topbar-actions">
+                                <button class="btn btn-primary topbar-btn-primary" onclick="loadCourses()">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    Kiểm tra môn học
+                                </button>
+                                <button class="btn btn-outline topbar-btn-excel" onclick="exportCourses()">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                    Xuất file Excel
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Primary Course Type Sub-tabs (Môn chính vs Môn điều kiện) -->
+                        <div class="course-type-segmented-bar">
+                            <button type="button" id="course-type-tab-main" class="course-type-tab active"
+                                onclick="switchCourseTypeTab('main')">
+                                <span style="font-size: 16px;">📘</span>
+                                <span>Môn học chính</span>
+                                <span id="course-type-badge-main" class="type-badge-count">0 môn mở</span>
+                            </button>
+                            <button type="button" id="course-type-tab-extra" class="course-type-tab"
+                                onclick="switchCourseTypeTab('extra')">
+                                <span style="font-size: 16px;">📗</span>
+                                <span>Môn học điều kiện</span>
+                                <span id="course-type-badge-extra" class="type-badge-count">0 môn mở</span>
+                            </button>
+                        </div>
+
+                        <!-- Stepper Tabs Navigation -->
+                        <div class="course-stepper-nav">
+                            <button type="button" id="step-tab-1" class="stepper-tab active" onclick="goToStep(1)">
+                                <span class="step-badge">1</span>
+                                <span class="step-title">1. Danh sách môn học (<span id="step1-total-count">0 môn
+                                        mở</span>)</span>
+                                <span id="step1-selected-pill" class="step-status-pill green">Đã chọn 0 môn</span>
+                            </button>
+                            <button type="button" id="step-tab-2" class="stepper-tab" onclick="goToStep(2)">
+                                <span class="step-badge">2</span>
+                                <span class="step-title">2. Chi tiết tất cả mã học phần đã chọn</span>
+                                <span id="step2-classes-pill" class="step-status-pill blue">0 lớp khả dụng</span>
+                            </button>
+                        </div>
+
+                        <!-- Step 1: Course Selection -->
+                        <div id="step1-view" class="step-view active">
+                            <!-- Courses List / Grid -->
+                            <div id="step1-courses-container" class="step1-courses-grid">
+                                <div class="empty-state-card card"
+                                    style="grid-column: 1/-1; text-align: center; padding: 50px 20px;">
+                                    <div style="font-size: 40px; margin-bottom: 12px; opacity: 0.6;">📚</div>
+                                    <h3 style="margin-bottom: 6px; color: var(--text-primary);">Chưa tải danh sách môn
+                                        học</h3>
+                                    <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 13px;">Bấm
+                                        nút "Kiểm tra môn học" ở trên để quét toàn bộ học phần mở trong kỳ</p>
+                                    <button class="btn btn-primary" onclick="loadCourses()">🔍 Kiểm tra môn học</button>
+                                </div>
+                            </div>
+
+                            <!-- Step 1 Bottom Floating Bar -->
+                            <div id="step1-bottom-bar" class="step1-bottom-bar hidden">
+                                <div class="step1-bar-left">
+                                    <span class="step1-check-icon">✓</span>
+                                    <div>
+                                        <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">
+                                            Đã chọn: <span id="step1-selected-count-text"
+                                                style="color: var(--primary);">0 môn</span>
+                                            <span style="color: var(--text-secondary); font-weight: 400;">(<span
+                                                    id="step1-selected-credits-text">0</span> tín chỉ)</span>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">Nhấn tiếp tục để
+                                            chọn lớp cụ thể và đối chiếu lịch học</div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary step1-btn-next" onclick="goToStep(2)">
+                                    Tiếp tục sang bước 2: Chọn lớp & Xếp lịch ➔
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Classes Detail & Selection Hub -->
+                        <div id="step2-view" class="step-view">
+                            <!-- Step 2 Loading Overlay -->
+                            <div id="step2-loading-overlay" style="display:none; position:absolute; inset:0; z-index:50; background:rgba(255,255,255,0.85); backdrop-filter:blur(4px); flex-direction:column; align-items:center; justify-content:center; gap:16px; border-radius:12px;">
+                                <div style="width:44px;height:44px;border:4px solid #e0e7ff;border-top-color:#4f46e5;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                                <p style="font-size:14px;font-weight:600;color:#4f46e5;margin:0;">Đang tải danh sách lớp học phần...</p>
+                            </div>
+
+                            <!-- Step 2 actual content -->
+                            <div id="step2-content-wrapper">
+                            <!-- Guide Notification Banner -->
+                            <div class="guide-banner-card">
+                                <div class="guide-bulb-icon">💡</div>
+                                <div class="guide-banner-text">
+                                    <strong>Hướng dẫn:</strong> Hệ thống đã tự động lọc ra các mã lớp học phần tương ứng
+                                    với các môn bạn đã chọn ở Bước 1. Vui lòng bấm chọn một mã lớp thích hợp cho mỗi
+                                    môn, kiểm tra trạng thái xung đột thời khóa biểu và bấm <strong>Tự động đăng
+                                        ký</strong> ở cuối màn hình.
+                                </div>
+                            </div>
+
+                            <!-- Step 2 Two-Column Layout -->
+                            <div class="step2-layout">
+                                <!-- Left Sidebar: Selected Courses & Display Filter -->
+                                <aside class="step2-sidebar">
+                                    <!-- Selected Courses Card -->
+                                    <div class="card step2-sidebar-card">
+                                        <div class="step2-sidebar-header">
+                                            <div class="sidebar-title">
+                                                <span class="sidebar-check-icon">✓</span>
+                                                <span>MÔN ĐÃ CHỌN (<span id="step2-sidebar-count">0 MÔN</span>)</span>
+                                            </div>
+                                            <a href="javascript:void(0)" onclick="goToStep(1)"
+                                                class="sidebar-back-link">Quay lại chọn thêm</a>
+                                        </div>
+                                        <div id="step2-sidebar-list" class="step2-sidebar-items">
+                                            <!-- Dynamically rendered mini-cards of selected courses -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Filter Box Card -->
+                                    <div class="card step2-sidebar-card" style="margin-top: 16px;">
+                                        <div class="sidebar-title"
+                                            style="padding-bottom: 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                                            <span>⚙ BỘ LỌC HIỂN THỊ</span>
+                                        </div>
+                                        <div class="step2-filter-list">
+                                            <label class="filter-check-item">
+                                                <input type="checkbox" id="filter-only-available"
+                                                    onchange="onStep2FilterChange()">
+                                                <span>Ẩn các lớp đã đầy (Chỉ hiện lớp còn chỗ)</span>
+                                            </label>
+                                            <label class="filter-check-item">
+                                                <input type="checkbox" id="filter-avoid-conflict"
+                                                    onchange="onStep2FilterChange()">
+                                                <span>Lọc tự động tránh trùng lịch TKB</span>
+                                            </label>
+                                            <label class="filter-check-item">
+                                                <input type="checkbox" id="filter-morning-pref"
+                                                    onchange="onStep2FilterChange()">
+                                                <span>Ưu tiên học ca sáng (Tiết 1–5)</span>
+                                            </label>
+                                            <label class="filter-check-item">
+                                                <input type="checkbox" id="filter-afternoon-pref"
+                                                    onchange="onStep2FilterChange()">
+                                                <span>Ưu tiên học ca chiều (Tiết 7–12)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </aside>
+
+                                <!-- Right Main Content: Course Class Groups -->
+                                <section class="step2-main">
+                                    <div id="step2-classes-container">
+                                        <!-- Dynamically generated groups for each selected course -->
+                                        <div class="empty-state-card card"
+                                            style="text-align: center; padding: 60px 20px;">
+                                            <p
+                                                style="font-size: 15px; color: var(--text-secondary); margin-bottom: 12px;">
+                                                Chưa chọn môn học nào ở Bước 1</p>
+                                            <button class="btn btn-primary" onclick="goToStep(1)">➔ Quay lại Bước 1 để
+                                                chọn môn</button>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                            </div><!-- /step2-content-wrapper -->
+
+                            <!-- Step 2 Sticky Bottom Bar -->
+                            <div id="step2-sticky-bar" class="step2-sticky-bar">
+                                <div class="sticky-bar-left">
+                                    <div class="sticky-check-circle">✓</div>
+                                    <div class="sticky-summary-content">
+                                        <div class="sticky-summary-title">
+                                            Tổng kết: <span id="summary-courses-count">0</span> môn • <span
+                                                id="summary-classes-count">0</span> mã lớp đã chọn <span
+                                                id="summary-class-ids-text" class="summary-ids-highlight">(Mã: Chưa
+                                                chọn)</span>
+                                            <span id="summary-credits-pill" class="summary-credit-pill">0 Tín chỉ</span>
+                                        </div>
+                                        <div id="summary-conflict-msg" class="sticky-summary-sub success">
+                                            ✓ Thời khóa biểu hợp lệ, không xung đột phòng hay ca học.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="sticky-bar-actions"
+                                    style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-outline sticky-btn-preview"
+                                        onclick="openWeeklySchedulePreviewModal()">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                        Xem trước TKB tuần
+                                    </button>
+
+                                    <!-- Quick Schedule / Timer Picker -->
+                                    <div
+                                        style="display: inline-flex; align-items: center; gap: 6px; background: rgba(245, 158, 11, 0.1); border: 1.5px solid #fcd34d; border-radius: 8px; padding: 4px 8px;">
+                                        <span
+                                            style="font-size: 12.5px; font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 4px;">⏰
+                                            Giờ hẹn:</span>
+                                        <input type="time" id="step2-timer-time" step="1" value="08:59:58"
+                                            style="padding: 4px 6px; border-radius: 6px; border: 1px solid #f59e0b; font-size: 13px; font-weight: 700; color: #92400e; background: #ffffff; outline: none; width: 105px;">
+                                        <button type="button" class="btn btn-sm"
+                                            onclick="triggerScheduledRegisterFromStep2()"
+                                            style="background: #f59e0b; color: white; border: none; font-weight: 700; border-radius: 6px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.25);"
+                                            title="Hẹn giờ tự động đếm ngược và bắn request">
+                                            ⏰ BẬT HẸN GIỜ
+                                        </button>
+                                    </div>
+
+                                    <button type="button" id="step2-trigger-autoregister-btn"
+                                        class="btn btn-primary sticky-btn-register"
+                                        onclick="if(typeof triggerAutoRegisterFromStep2 === 'function'){ triggerAutoRegisterFromStep2(); } else { const m = document.getElementById('step2-auto-register-modal'); if(m) { m.style.cssText = 'display: flex !important; opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; z-index: 9999999 !important;'; m.classList.add('active', 'show'); } }">
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2.5">
+                                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                        </svg>
+                                        CHẠY NGAY
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- hidden inputs for backward compatibility -->
+                        <input type="hidden" id="filter-ma-hp" value="">
+                        <input type="hidden" id="extra-ma-hp" value="">
+                    </div>
+
+                    <!-- Tab 2: Đăng ký học phần (có thể đăng ký các mã lớp bị ẩn) -->
+                    <div id="tab-register" class="tab-content">
+                        <div class="tab-header">
+                            <h2>Đăng ký học phần (có thể đăng ký các mã lớp bị ẩn)</h2>
+                        </div>
+                        <div class="card">
+                            <div class="form-row">
+                                <div class="form-group flex-2">
+                                    <label>ID lớp học phần (mỗi dòng 1 ID)</label>
+                                    <textarea id="class-ids" rows="4"
+                                        placeholder="Nhập ID lớp, mỗi ID một dòng..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Loại môn</label>
+                                    <select id="register-type">
+                                        <option value="main">Môn chính</option>
+                                        <option value="extra">Môn học phụ</option>
+                                        <option value="improvement">Môn cải thiện</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Chế độ chạy</label>
+                                    <select id="register-mode">
+                                        <option value="browser" selected>⚡ Trực tiếp trình duyệt (Tự re-login, Khuyên
+                                            dùng)</option>
+                                        <option value="server">🌐 Chạy ngầm trên máy chủ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Hẹn giờ chạy (không bắt buộc)</label>
+                                    <input type="time" id="register-timer-input" step="1"
+                                        title="Để trống nếu muốn chạy ngay lập tức">
+                                </div>
+                                <div class="form-group">
+                                    <label>Số lượt thử</label>
+                                    <input type="number" id="register-loop" value="10" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay Min (ms)</label>
+                                    <input type="number" id="register-delay" value="50" min="1" step="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay Max (ms)</label>
+                                    <input type="number" id="register-delay-max" value="100" min="1" step="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 1;">
+                                    <div
+                                        style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                                        <div class="btn-group">
+                                            <button class="btn btn-primary" id="start-register-btn"
+                                                onclick="startAutoRegister()">
+                                                ▶ Bắt đầu
+                                            </button>
+                                            <button class="btn btn-danger" id="stop-register-btn"
+                                                onclick="stopAutoRegister()" disabled>
+                                                ⏹ Dừng
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="log-header">
+                                <h3>📋 Log đăng ký</h3>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <a href="/api/registration/view-logs" target="_blank" class="btn btn-sm btn-outline"
+                                        style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 4px 10px;"
+                                        title="Mở trang xem log chạy ngầm trên máy chủ Render">🌐 Nhật ký Server
+                                        ngầm</a>
+                                    <button class="btn btn-sm btn-ghost" onclick="clearRegisterLog()">Xóa log</button>
+                                </div>
+                            </div>
+                            <div id="register-log" class="log-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 5: Môn đã ĐK -->
+                    <div id="tab-registered" class="tab-content">
+                        <!-- Header & Actions -->
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+                            <div>
+                                <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #0f172a;">Môn học đã
+                                    đăng ký</h2>
+                                <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;" id="registered-sub-title">
+                                    Danh sách các học phần ghi danh thành công trong kỳ học hiện tại
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn btn-primary btn-sm" onclick="loadRegisteredCourses()"
+                                    style="background: linear-gradient(135deg, #0284c7, #2563eb); border: none; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                    🔄 Tải lại
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Top Summary Stat Card -->
+                        <div style="display: flex; gap: 14px; margin-bottom: 20px; max-width: 260px;">
+                            <!-- Card 1: Tổng số môn -->
+                            <div class="stat-card"
+                                style="background: white; padding: 14px 18px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); width: 100%;">
+                                <div
+                                    style="width: 44px; height: 44px; background: #eff6ff; color: #2563eb; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                                    💾
+                                </div>
+                                <div>
+                                    <div
+                                        style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        TỔNG SỐ MÔN</div>
+                                    <div style="font-size: 20px; font-weight: 700; color: #0f172a;"><span
+                                            id="registered-total-courses">0</span> <span
+                                            style="font-size: 13px; font-weight: 500; color: #64748b;">môn</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Section 1: Môn học chính -->
+                        <div class="card"
+                            style="margin-bottom: 20px; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                <h3
+                                    style="margin: 0; font-size: 15px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+                                    <span
+                                        style="width: 8px; height: 8px; border-radius: 50%; background: #2563eb; display: inline-block;"></span>
+                                    Môn học chính đã đăng ký
+                                </h3>
+                                <span id="registered-main-count-badge"
+                                    style="background: #e0f2fe; color: #0284c7; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                    0 học phần
+                                </span>
+                            </div>
+                            <div class="table-wrapper" style="overflow-x: auto;">
+                                <table id="registered-main-table" class="data-table"
+                                    style="width: 100%; min-width: 700px;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40px; text-align: center;">STT</th>
+                                            <th style="width: 95px;">Mã HP</th>
+                                            <th>Tên học phần</th>
+                                            <th style="width: 120px;">Tên lớp</th>
+                                            <th>Lịch học & Phòng</th>
+                                            <th style="width: 70px; text-align: center;">Số TC</th>
+                                            <th style="width: 110px; text-align: center;">Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Card Section 2: Môn học phụ / điều kiện -->
+                        <div class="card"
+                            style="margin-bottom: 20px; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                <h3
+                                    style="margin: 0; font-size: 15px; font-weight: 700; color: #92400e; display: flex; align-items: center; gap: 8px;">
+                                    <span
+                                        style="width: 8px; height: 8px; border-radius: 50%; background: #d97706; display: inline-block;"></span>
+                                    Môn học phụ / điều kiện đã đăng ký
+                                </h3>
+                                <span id="registered-extra-count-badge"
+                                    style="background: #fef3c7; color: #d97706; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                    0 học phần
+                                </span>
+                            </div>
+                            <div class="table-wrapper" style="overflow-x: auto;">
+                                <table id="registered-extra-table" class="data-table"
+                                    style="width: 100%; min-width: 700px;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40px; text-align: center;">STT</th>
+                                            <th style="width: 95px;">Mã HP</th>
+                                            <th>Tên học phần</th>
+                                            <th style="width: 120px;">Tên lớp</th>
+                                            <th>Lịch học & Phòng</th>
+                                            <th style="width: 70px; text-align: center;">Số TC</th>
+                                            <th style="width: 110px; text-align: center;">Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab 6: Học phần cải thiện -->
+                    <div id="tab-improvement" class="tab-content">
+                        <div class="tab-header"
+                            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                            <div>
+                                <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #0f172a;">Học phần cải
+                                    thiện</h2>
+                                <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Tra cứu môn học nâng điểm
+                                    và tìm nhanh Mã học phần từ Mã lớp / ID lớp</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="loadImprovementCourses()"
+                                style="border-radius: 8px; font-weight: 600;">
+                                🔍 Kiểm tra
+                            </button>
+                        </div>
+
+                        <!-- Card tra cứu nhanh Mã HP từ ID / Mã lớp HP -->
+                        <div class="card"
+                            style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; border: 1px solid #bfdbfe; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); box-shadow: 0 2px 4px rgba(37,99,235,0.04);">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                                <div
+                                    style="font-weight: 700; font-size: 14px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                                    <span>🔎</span> Điền ID / Mã lớp học phần để tìm Mã HP
+                                </div>
+                                <small style="color: #64748b; font-size: 12px;">Dán mã lớp hoặc ID lớp vào ô bên dưới,
+                                    hệ thống sẽ tự động tìm ra Mã HP môn đó</small>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center; max-width: 600px;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="improvement-lookup-input"
+                                        placeholder="Dán ID lớp (VD: 219184) hoặc Mã lớp HP (VD: 010441203101)..."
+                                        style="width: 100%; padding: 8px 36px 8px 12px; border-radius: 8px; border: 1px solid #93c5fd; font-size: 13px; background: white;"
+                                        onkeydown="if(event.key==='Enter') lookupImprovementClass()">
+                                    <span id="improvement-lookup-clear" onclick="clearImprovementLookup()"
+                                        style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; font-weight: bold; font-size: 14px;">✕</span>
+                                </div>
+                                <button class="btn btn-primary btn-sm" onclick="lookupImprovementClass()"
+                                    style="padding: 8px 16px; border-radius: 8px; font-weight: 600; white-space: nowrap; background: #2563eb;">
+                                    🔍 Tìm mã HP
+                                </button>
+                            </div>
+
+                            <!-- Vùng hiển thị kết quả tìm kiếm -->
+                            <div id="improvement-lookup-result" style="display: none; margin-top: 12px;"></div>
+                        </div>
+
+                        <div class="card">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">Danh sách học
+                                    phần có thể cải thiện</h3>
+                                <span id="improvement-count-badge"
+                                    style="background: #eff6ff; color: #2563eb; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: none;"></span>
+                            </div>
+                            <div class="table-wrapper">
+                                <table id="improvement-courses-table" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>STT</th>
+                                            <th>Mã HP</th>
+                                            <th>Tên học phần</th>
+                                            <th>Số TC</th>
+                                            <th>Điểm cũ</th>
+                                            <th>Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h3>Danh sách lớp học phần cải thiện</h3>
+                            <div class="table-wrapper">
+                                <table id="improvement-classes-table" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th><input type="checkbox" id="select-all-improvement"></th>
+                                            <th>ID</th>
+                                            <th>Tên lớp</th>
+                                            <th>Lịch học</th>
+                                            <th>Sĩ số</th>
+                                            <th>Hành động</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab 7: Lịch học chi tiết -->
+                    <div id="tab-schedule" class="tab-content">
+                        <div class="card"
+                            style="padding: 0; overflow: hidden; border: 1px solid var(--border-color); background: #f8fafc;">
+                            <div
+                                style="background: linear-gradient(135deg, #e0f2fe, #f0f9ff); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 2px dashed #bae6fd;">
+                                <h3
+                                    style="margin: 0; color: #0369a1; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                                    Lịch Học Chi Tiết Của Bạn
+                                </h3>
+                                <button class="btn btn-primary" onclick="loadAllSchedules()"
+                                    style="background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; border: none; font-weight: 600; padding: 6px 16px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(14,165,233,0.2);">
+                                    ✨ Làm mới lịch
+                                </button>
+                            </div>
+                            <div id="schedule-container" style="padding: 20px; min-height: 300px;">
+                                <div
+                                    style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--text-secondary);text-align:center;">
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="1" style="margin-bottom:16px;opacity:0.3;">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    <p style="margin:0;font-size:15px;font-weight:500;color:#64748b;">Chưa tải dữ liệu
+                                        lịch học</p>
+                                    <p style="margin:8px 0 0;font-size:13px;">Nhấn nút "Làm mới lịch" để xem chi tiết
+                                        các môn bạn đã đăng ký</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tab 8: Sự kiện -->
+                    <div id="tab-events" class="tab-content">
+                        <div class="tab-header">
+                            <h2>🎉 Đăng ký sự kiện</h2>
+                        </div>
+                        <div class="card">
+                            <h3>Đăng ký / Hủy sự kiện theo ID</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>ID Sự kiện</label>
+                                    <input type="number" id="event-id-input" placeholder="Nhập ID sự kiện (VD: 42)"
+                                        min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Ngày (ID)</label>
+                                    <input type="number" id="event-date-id-input" placeholder="ID ngày (số)" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <div class="btn-group">
+                                        <button class="btn btn-primary" onclick="handleRegisterEvent()">
+                                            ✅ Đăng ký sự kiện
+                                        </button>
+                                        <button class="btn btn-danger" onclick="handleCancelEvent()">
+                                            ❌ Hủy đăng ký
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <small style="color: var(--text-secondary);">Mở portal.ut.edu.vn → vào trang sự kiện → lấy
+                                số ID từ URL (VD: portal.ut.edu.vn/event/<b>42</b>)</small>
+                        </div>
+
+                        <div class="card">
+                            <h3>Tự động đăng ký & Hẹn giờ</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Hẹn giờ chạy (không bắt buộc)</label>
+                                    <input type="time" id="event-timer-input" step="1"
+                                        title="Để trống nếu muốn chạy ngay lập tức">
+                                </div>
+                                <div class="form-group">
+                                    <label>Số lượt thử</label>
+                                    <input type="number" id="event-retry-input" value="10" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay Min (ms)</label>
+                                    <input type="number" id="event-delay-min-input" value="50" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>Delay Max (ms)</label>
+                                    <input type="number" id="event-delay-max-input" value="100" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <div class="btn-group">
+                                        <button id="event-auto-btn" class="btn btn-primary" onclick="toggleAutoEvent()">
+                                            ▶ Bắt đầu Auto
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="log-header">
+                                <h3>📋 Log sự kiện</h3>
+                                <button class="btn btn-sm btn-ghost" onclick="clearEventLog()">Xóa log</button>
+                            </div>
+                            <div id="event-log" class="log-container"></div>
+                        </div>
+                    </div>
+                    <!-- Tab 9: Lịch học dự kiến -->
+                    <div id="tab-future-schedule" class="tab-content">
+                        <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                            <!-- Left panel: Input -->
+                            <div style="flex: 0 0 300px; min-width: 260px;">
+                                <div class="card"
+                                    style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd;">
+                                    <h3
+                                        style="color: #0369a1; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                                        🔍 Thêm môn/Lớp dự kiến
+                                    </h3>
+
+                                    <!-- Course Type Toggle: Môn chính vs Môn điều kiện -->
+                                    <div class="form-group" style="margin-bottom: 12px;">
+                                        <label
+                                            style="font-size: 12px; font-weight: 600; color: #0369a1; margin-bottom: 6px; display: block;">
+                                            Loại môn học:
+                                        </label>
+                                        <div
+                                            style="display: flex; gap: 6px; background: rgba(255,255,255,0.85); padding: 4px; border-radius: 8px; border: 1px solid #bae6fd;">
+                                            <button type="button" id="future-type-btn-main"
+                                                onclick="setFutureScheduleType('main')"
+                                                style="flex: 1; padding: 7px 10px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; background: #0284c7; color: white; box-shadow: 0 2px 4px rgba(2,132,199,0.25);">
+                                                📘 Môn chính
+                                            </button>
+                                            <button type="button" id="future-type-btn-extra"
+                                                onclick="setFutureScheduleType('extra')"
+                                                style="flex: 1; padding: 7px 10px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; background: transparent; color: #475569;">
+                                                📗 Môn điều kiện
+                                            </button>
+                                        </div>
+                                        <input type="hidden" id="future-type-select" value="main">
+                                    </div>
+
+                                    <!-- Quick Course Select Dropdown -->
+                                    <div class="form-group" style="margin-bottom: 12px;">
+                                        <div
+                                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                            <label style="font-size: 12px; font-weight: 600; color: #0369a1;">
+                                                Chọn nhanh môn học:
+                                            </label>
+                                            <button type="button" class="btn-ghost" onclick="reloadFutureQuickCourses()"
+                                                style="font-size: 11px; padding: 1px 6px; color: #0284c7; cursor: pointer; border: none; background: none;"
+                                                title="Tải lại danh sách môn học từ Portal">
+                                                🔄 Tải DS môn
+                                            </button>
+                                        </div>
+                                        <select id="future-course-quick-select"
+                                            onchange="onFutureQuickCourseSelect(this.value)"
+                                            style="width: 100%; border-color: #bae6fd; font-size: 12px; padding: 6px 8px; border-radius: 6px; background: white;">
+                                            <option value="">-- Chọn môn học từ danh sách --</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group" style="margin-bottom: 10px;">
+                                        <label id="future-input-label"
+                                            style="font-size: 12px; font-weight: 600; color: #0369a1; margin-bottom: 4px; display: block;">Mã
+                                            Học Phần hoặc ID Lớp <span style="font-weight:400;color:#64748b;">(mỗi dòng
+                                                1 mã)</span></label>
+                                        <textarea id="future-input" rows="6"
+                                            placeholder="Nhập Mã HP hoặc ID Lớp (Môn chính):&#10;219001&#10;0101004117"
+                                            style="border-color: #bae6fd; font-family: monospace; font-size: 13px; resize: vertical;"></textarea>
+                                    </div>
+                                    <div class="btn-group">
+                                        <button class="btn btn-primary" onclick="processFutureScheduleInputs()"
+                                            style="background: linear-gradient(135deg, #0369a1, #0284c7); border: none; flex: 1;">🔍
+                                            Xem lịch</button>
+                                        <button class="btn btn-outline" onclick="clearFutureInputs()"
+                                            style="color: #dc2626; border-color: #fca5a5;">✕ Xóa</button>
+                                    </div>
+                                </div>
+
+                                <!-- Checklist card -->
+                                <div class="card" id="planner-checklist-card"
+                                    style="display: none; margin-top: 14px; padding: 0; overflow: hidden; border: 1px solid var(--border-color);">
+                                    <div
+                                        style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); padding: 12px 14px; border-bottom: 1px solid #bbf7d0;">
+                                        <h3
+                                            style="margin: 0; color: #15803d; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                                            📋 Danh sách lớp học phần</h3>
+                                    </div>
+                                    <div id="planner-classes-checklist"
+                                        style="padding: 12px; max-height: 420px; overflow-y: auto;"></div>
+                                    <div
+                                        style="padding: 10px 14px; background: var(--bg-secondary); border-top: 1px solid var(--border-color);">
+                                        <button class="btn btn-primary" onclick="copyFutureIdsToRegister()"
+                                            style="width: 100%; background: linear-gradient(135deg, #0d9488, #0891b2); border: none; font-weight: 600;">
+                                            ⚡ Điền ID vào tab Đăng ký
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right panel: Timetable -->
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="card"
+                                    style="padding: 0; overflow: hidden; border: 1px solid var(--border-color);">
+                                    <div
+                                        style="background: linear-gradient(135deg, #1e3a5f, #1e40af); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                        <h3
+                                            style="margin: 0; color: white; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+                                            📅 Bảng Thời Khóa Biểu Tuần</h3>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button id="btn-phase-1" onclick="switchTimetablePhase(1)"
+                                                style="padding: 5px 14px; border-radius: 20px; border: 2px solid white; background: white; color: #1e40af; font-weight: 700; font-size: 12px; cursor: pointer;">Đợt
+                                                1</button>
+                                            <button id="btn-phase-2" onclick="switchTimetablePhase(2)"
+                                                style="padding: 5px 14px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.5); background: transparent; color: white; font-weight: 600; font-size: 12px; cursor: pointer;">Đợt
+                                                2</button>
+                                        </div>
+                                    </div>
+                                    <div style="overflow-x: auto; padding: 0;">
+                                        <table id="visual-timetable"
+                                            style="width: 100%; border-collapse: collapse; min-width: 700px; font-size: 12px;">
+                                            <thead>
+                                                <tr style="background: #f8fafc;">
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #64748b; font-size: 11px; width: 40px;">
+                                                        Ca học</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #64748b; font-size: 11px; width: 75px;">
+                                                        Ca</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        Thứ 2</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        Thứ 3</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        Thứ 4</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        Thứ 5</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        Thứ 6</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        Thứ 7</th>
+                                                    <th
+                                                        style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                        CN</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                    <div
+                                        style="padding: 10px 14px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 16px; font-size: 11px; flex-wrap: wrap;">
+                                        <span style="display: flex; align-items: center; gap: 5px;"><span
+                                                style="width:10px;height:10px;background:#eff6ff;border-left:3px solid #2563eb;border-radius:2px;display:inline-block;"></span>
+                                            Lớp chính dự kiến</span>
+                                        <span style="display: flex; align-items: center; gap: 5px;"><span
+                                                style="width:10px;height:10px;background:#ecfdf5;border-left:3px solid #10b981;border-radius:2px;display:inline-block;"></span>
+                                            Lớp điều kiện dự kiến</span>
+                                        <span style="display: flex; align-items: center; gap: 5px;"><span
+                                                style="width:10px;height:10px;background:#f1f5f9;border-left:3px solid #64748b;border-radius:2px;display:inline-block;"></span>
+                                            Lớp đã đăng ký</span>
+                                        <span style="display: flex; align-items: center; gap: 5px;"><span
+                                                style="width:10px;height:10px;background:#fee2e2;border-left:3px solid #dc2626;border-radius:2px;display:inline-block;"></span>
+                                            Trùng lịch</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+
+            <!-- Status Bar -->
+            <footer class="status-bar">
+                <span id="status-text">Sẵn sàng</span>
+                <span id="status-time" style="display: none;"></span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Class Detail Modal -->
+    <div id="class-detail-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Chi tiết lớp học phần</h2>
+            </div>
+            <div class="modal-body">
+                <div id="class-detail-content">
+                    <!-- Content will be loaded here -->
+                    <div class="text-center">Đang tải...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guide Modal -->
+    <div id="guide-modal" class="modal">
+        <div class="modal-content"
+            style="max-width: 680px; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 18px 24px; color: white; border-bottom: none;">
+                <h2
+                    style="color: white; display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; margin: 0;">
+                    📖 Hướng Dẫn Sử Dụng Tool ĐKHP UTH
+                </h2>
+                <span class="close" onclick="closeGuideModal()"
+                    style="cursor: pointer; font-size: 26px; font-weight: bold; color: rgba(255,255,255,0.8); transition: color 0.15s;"
+                    onmouseover="this.style.color='white'"
+                    onmouseout="this.style.color='rgba(255,255,255,0.8)'">&times;</span>
+            </div>
+            <div class="modal-body" style="background: #ffffff; padding: 24px; max-height: 75vh; overflow-y: auto;">
+                <p
+                    style="font-weight: 500; color: #334155; margin-top: 0; margin-bottom: 18px; font-size: 14px; line-height: 1.5;">
+                    Chào mừng bạn đến với <strong>Tool ĐKHP UTH</strong> – Giải pháp tự động hóa tra cứu, xếp lịch và
+                    đăng ký học phần siêu tốc dành cho sinh viên Trường Đại học Giao thông Vận tải TP.HCM.
+                </p>
+
+                <div class="guide-steps" style="line-height: 1.6; font-size: 13.5px; color: #475569;">
+                    <!-- Step 1 -->
+                    <div
+                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+                        <h4
+                            style="margin: 0 0 8px; color: #1e40af; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            🗓️ 1. Xếp & Xem Lịch Dự Kiến (Tab Lịch dự kiến)
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Chọn loại môn muốn xem: <strong>📘 Môn chính</strong> hoặc <strong>📗 Môn điều
+                                    kiện</strong> (Tiếng Anh, kỹ năng, thể chất,...).</li>
+                            <li>Dán danh sách <strong>Mã học phần</strong> hoặc <strong>ID Lớp</strong> vào ô nhập liệu
+                                (mỗi dòng 1 mã), hoặc chọn nhanh từ menu <strong>Chọn nhanh môn học</strong>.</li>
+                            <li>Nhấn <strong>🔍 Xem lịch</strong>: Tool sẽ tự động gọi API trường để tải lịch và vẽ lên
+                                Thời khóa biểu tuần.</li>
+                            <li>Tự động nhận diện môn học thuộc <strong>Đợt 1</strong>, <strong>Đợt 2</strong> hoặc cả 2
+                                đợt.</li>
+                            <li>Tự động cảnh báo <strong style="color: #dc2626;">⚠️ Trùng lịch</strong> bằng màu đỏ nổi
+                                bật nếu có 2 môn cùng khung giờ.</li>
+                            <li>Nhấn <strong>⚡ Điền ID vào tab Đăng ký</strong> để chuyển nhanh các lớp đã tick chọn
+                                sang tab đăng ký.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div
+                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+                        <h4
+                            style="margin: 0 0 8px; color: #1e40af; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            📝 2. Đăng Ký Học Phần Tự Động (Tab Đăng ký HP)
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Nhập danh sách <strong>ID lớp học phần</strong> cần đăng ký (mỗi ID một dòng).</li>
+                            <li>Chọn đúng <strong>Loại môn</strong> (Môn chính, Môn phụ/điều kiện, hoặc Môn cải thiện).
+                            </li>
+                            <li><strong>Hẹn giờ chạy (Auto Sniper):</strong> Nhập giờ mở cổng portal (ví dụ:
+                                <code>08:00:00</code>), hệ thống sẽ tự động bù trừ sai số với giờ máy chủ trường và kích
+                                hoạt đăng ký ngay khi cổng mở.
+                            </li>
+                            <li><strong>Thời gian chờ (Delay):</strong> Khuyên dùng Min: <code>5ms</code>, Max:
+                                <code>10ms</code> để đăng ký nhanh mà không bị nghẽn mạng.
+                            </li>
+                            <li>Nhấn <strong>▶ Bắt đầu</strong> để chạy đăng ký tự động và theo dõi kết quả ở khung nhật
+                                ký (Log).</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div
+                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+                        <h4
+                            style="margin: 0 0 8px; color: #1e40af; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            📚 3. Tra Cứu & Lọc Môn Học (Tab Check môn học)
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Nhấn <strong>🔍 Kiểm tra</strong> để lấy danh sách toàn bộ môn học chính và điều kiện mở
+                                trong học kỳ.</li>
+                            <li>Bấm vào một môn học ở bảng bên trái để xem toàn bộ danh sách lớp, sĩ số hiện
+                                tại/tối đa và lịch học ở bảng bên phải.</li>
+                            <li>Tích chọn <strong>Lọc lịch trùng</strong> để chỉ xem các lớp không trùng với môn bạn đã
+                                đăng ký.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div
+                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+                        <h4
+                            style="margin: 0 0 8px; color: #1e40af; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            ✅ 4. Quản Lý Môn Đã Đăng Ký (Tab Môn đã ĐK)
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Theo dõi <strong>Tổng số môn</strong> học phần đã ghi danh thành công trong học kỳ.</li>
+                            <li>Xem chi tiết mã học phần, tên lớp, thứ, tiết học, phòng học và số tín chỉ (Số TC) cho
+                                từng lớp môn chính và môn phụ.</li>
+                            <li>Bấm <strong>🔄 Tải lại</strong> để cập nhật dữ liệu mới nhất từ cổng trường.</li>
+                            <li>Có nút <strong>🗑️ Hủy môn</strong> với các môn được trường cho phép hủy hoặc <strong>🔒
+                                    Không thể hủy</strong> khi trường khóa.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div
+                        style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px;">
+                        <h4
+                            style="margin: 0 0 8px; color: #1e40af; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            🔄 5. Học Phần Cải Thiện & Tìm Mã HP từ Mã Lớp
+                        </h4>
+                        <ul style="margin: 0; padding-left: 20px;">
+                            <li>Bấm <strong>🔍 Kiểm tra</strong> để lấy danh sách các học phần bạn đủ điều kiện đăng ký
+                                học cải thiện.</li>
+                            <li><strong>Tra cứu nhanh Mã HP:</strong> Dán ID lớp hoặc Mã lớp HP vào ô tìm kiếm ở đầu
+                                tab, tool sẽ tự động tìm ra Mã HP, sao chép và định vị mở lớp ngay lập tức.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Important Tips -->
+                    <div
+                        style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px;">
+                        <strong style="color: #1d4ed8; font-size: 13px;">💡 Mẹo nhỏ khi săn học phần:</strong>
+                        <p style="margin: 4px 0 0; font-size: 12.5px; color: #1e40af;">
+                            Hãy chuẩn bị danh sách ID lớp trước giờ mở cổng 15-30 phút qua tab <strong>Lịch dự
+                                kiến</strong>, sau đó điền sẵn vào tab <strong>Đăng ký HP</strong> và đặt hẹn giờ chạy
+                            trước 5 giây để đạt tỉ lệ đăng ký thành công cao nhất!
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer"
+                style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="closeGuideModal()"
+                    style="border-radius: 8px; padding: 8px 20px; font-weight: 600;">
+                    Đã hiểu
+                </button>
+                <!-- Weekly Schedule Preview Modal -->
+                <div id="weekly-schedule-preview-modal" class="modal">
+                    <div class="modal-content"
+                        style="max-width: 960px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+                        <div class="modal-header"
+                            style="background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 16px 22px; color: white; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
+                            <h2
+                                style="color: white; display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; margin: 0;">
+                                📅 Thời Khóa Biểu Tuần (Các lớp đã chọn)
+                            </h2>
+                            <span class="close" onclick="closeWeeklySchedulePreviewModal()"
+                                style="cursor: pointer; font-size: 24px; font-weight: bold; color: rgba(255,255,255,0.85);">&times;</span>
+                        </div>
+                        <div class="modal-body"
+                            style="padding: 16px; background: #ffffff; max-height: 78vh; overflow-y: auto;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                <div id="preview-modal-summary"
+                                    style="font-size: 13.5px; font-weight: 600; color: #1e293b;">
+                                    Đang chọn: <span id="preview-modal-count" style="color: #2563eb;">0 lớp</span>
+                                </div>
+                                <div style="display: flex; gap: 12px; font-size: 12px;">
+                                    <span style="display: flex; align-items: center; gap: 5px;"><span
+                                            style="width: 10px; height: 10px; background: #eff6ff; border-left: 3px solid #2563eb; border-radius: 2px;"></span>
+                                        Môn chính</span>
+                                    <span style="display: flex; align-items: center; gap: 5px;"><span
+                                            style="width: 10px; height: 10px; background: #ecfdf5; border-left: 3px solid #10b981; border-radius: 2px;"></span>
+                                        Môn điều kiện</span>
+                                    <span style="display: flex; align-items: center; gap: 5px;"><span
+                                            style="width: 10px; height: 10px; background: #fee2e2; border-left: 3px solid #ef4444; border-radius: 2px;"></span>
+                                        Trùng lịch</span>
+                                </div>
+                            </div>
+                            <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                                <table id="modal-visual-timetable"
+                                    style="width: 100%; border-collapse: collapse; min-width: 700px; font-size: 12px;">
+                                    <thead>
+                                        <tr style="background: #f8fafc;">
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #64748b; font-size: 11px; width: 40px;">
+                                                Buổi</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #64748b; font-size: 11px; width: 75px;">
+                                                Ca</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                Thứ 2</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                Thứ 3</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                Thứ 4</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                Thứ 5</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                Thứ 6</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                Thứ 7</th>
+                                            <th
+                                                style="padding: 8px 6px; text-align: center; border: 1px solid #e2e8f0; color: #475569; font-weight: 600;">
+                                                CN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="modal-footer"
+                            style="padding: 12px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                            <button class="btn btn-secondary" onclick="closeWeeklySchedulePreviewModal()">Đóng</button>
+                            <button class="btn btn-primary"
+                                onclick="closeWeeklySchedulePreviewModal(); triggerAutoRegisterFromStep2();">
+                                ⚡ Tiếp tục Đăng ký học phần
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 Live Auto Register Modal (Spam Request UI) -->
+                <div id="step2-auto-register-modal" class="modal">
+                    <div class="modal-content"
+                        style="max-width: 760px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+                        <div class="modal-header"
+                            style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 14px 20px; color: white; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+                            <h3
+                                style="color: white; display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin: 0;">
+                                ⚡ Tự động đăng ký & Spam Request
+                            </h3>
+                            <span class="close" onclick="closeStep2AutoRegisterModal()"
+                                style="cursor: pointer; font-size: 24px; font-weight: bold; color: rgba(255,255,255,0.85);">&times;</span>
+                        </div>
+
+                        <div class="modal-body"
+                            style="padding: 24px 28px; background: #ffffff; max-height: 75vh; overflow-y: auto;">
+                            <!-- Countdown Banner (Shown when timer is active) -->
+                            <div id="step2-countdown-banner"
+                                style="display: none; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1.5px solid #f59e0b; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);">
+                                <div
+                                    style="font-size: 13px; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    ⏰ CHẾ ĐỘ HẸN GIỜ TỰ ĐỘNG BẮN REQUEST</div>
+                                <div id="step2-countdown-time"
+                                    style="font-size: 32px; font-weight: 900; color: #92400e; font-family: monospace; margin: 6px 0; letter-spacing: 1px;">
+                                    00:00:00.0</div>
+                                <div style="font-size: 13px; color: #78350f; font-weight: 500;">Mục tiêu kích hoạt:
+                                    <strong id="step2-target-time-label" style="color: #b45309;">08:59:58</strong>
+                                </div>
+                                <div style="margin-top: 12px; display: flex; justify-content: center; gap: 10px;">
+                                    <button type="button" class="btn btn-sm btn-primary"
+                                        onclick="startSpamNowFromCountdown()"
+                                        style="font-weight: 700; padding: 6px 16px; font-size: 13px; border-radius: 6px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);">⚡
+                                        Bắn request ngay</button>
+                                    <button type="button" class="btn btn-sm" onclick="cancelStep2Countdown()"
+                                        style="font-weight: 600; padding: 6px 14px; font-size: 13px; border-radius: 6px; background: #ffffff; color: #dc2626; border: 1px solid #fca5a5; cursor: pointer;">🛑
+                                        Hủy hẹn giờ</button>
+                                </div>
+                            </div>
+
+                            <!-- Big Centered Request Counter -->
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <div style="font-size: 28px; font-weight: 800; color: #dc2626; letter-spacing: -0.5px;">
+                                    Số lượng requests: <span id="spam-request-count">0</span>
+                                </div>
+                                <div id="spam-sub-status"
+                                    style="font-size: 13.5px; color: #64748b; margin-top: 4px; font-weight: 500;">
+                                    Đang spam request để đăng ký các mã học phần đã chọn
+                                </div>
+                            </div>
+
+                            <!-- Course List with 10-12 Digit Codes (Matching Screenshot) -->
+                            <div id="spam-courses-list"
+                                style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin: 0 auto 20px; font-size: 14px; color: #334155; line-height: 2.1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;">
+                                <!-- Dynamically populated: 012001602630: Lấy Thông tin chi tiết... -->
+                            </div>
+
+                            <!-- Bottom Status -->
+                            <div id="spam-bottom-status"
+                                style="text-align: center; font-size: 18px; font-weight: 700; color: #2563eb; margin: 10px 0 16px;">
+                                Đang spam request các lớp học...
+                            </div>
+
+                            <!-- Always-Open Terminal Log Box -->
+                            <div
+                                style="background: #0f172a; border-radius: 10px; padding: 12px 14px; color: #e2e8f0; font-size: 12px; font-family: monospace; border: 1px solid #1e293b;">
+                                <div
+                                    style="color: #94a3b8; font-weight: 600; margin-bottom: 8px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span>📋 Chi tiết phản hồi từ Server (Live stream):</span>
+                                    <span
+                                        style="font-size: 11px; color: #10b981; font-weight: 700; display: flex; align-items: center; gap: 4px;">●
+                                        TRỰC TIẾP</span>
+                                </div>
+                                <div id="step2-modal-log-box"
+                                    style="max-height: 150px; overflow-y: auto; line-height: 1.6; border-top: 1px solid #1e293b; padding-top: 8px;">
+                                    <div style="color: #64748b;">[Sẵn sàng] Đang chuẩn bị spam request...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer"
+                            style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span
+                                    style="font-size: 12.5px; font-weight: 600; color: #64748b; margin-right: 4px;">Delay
+                                    ngẫu nhiên:</span>
+                                <button type="button" class="btn btn-sm spam-speed-btn" data-delay="150"
+                                    onclick="setSpamDelay(150, this)"
+                                    style="padding: 4px 10px; font-size: 12px; border-radius: 6px; font-weight: 600; border: 1px solid #cbd5e1; background: white; cursor: pointer;"
+                                    title="Khoảng ~110ms - 190ms">⚡ Nhanh (~150ms)</button>
+                                <button type="button" class="btn btn-sm spam-speed-btn active" data-delay="350"
+                                    onclick="setSpamDelay(350, this)"
+                                    style="padding: 4px 10px; font-size: 12px; border-radius: 6px; font-weight: 700; background: #2563eb; color: white; border: 1px solid #2563eb; cursor: pointer;"
+                                    title="Khoảng ~260ms - 440ms">🚀 Vừa (~350ms)</button>
+                                <button type="button" class="btn btn-sm spam-speed-btn" data-delay="700"
+                                    onclick="setSpamDelay(700, this)"
+                                    style="padding: 4px 10px; font-size: 12px; border-radius: 6px; font-weight: 600; border: 1px solid #cbd5e1; background: white; cursor: pointer;"
+                                    title="Khoảng ~520ms - 880ms">🛡️ An toàn (~700ms)</button>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" id="step2-modal-stop-btn" class="btn btn-danger"
+                                    onclick="stopStep2AutoRegister()"
+                                    style="background: #ef4444; color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                    🛑 Dừng spam
+                                </button>
+                                <button type="button" id="step2-modal-retry-btn" class="btn btn-primary"
+                                    onclick="retryStep2AutoRegister()"
+                                    style="display: none; padding: 8px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                    🔄 Tiếp tục spam
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="closeStep2AutoRegisterModal()"
+                                    style="padding: 8px 18px; border-radius: 8px; cursor: pointer;">
+                                    Đóng
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Guide Modal (Pipeline & Hướng dẫn sử dụng từ A-Z) -->
+                <div id="guide-modal" class="modal">
+                    <div class="modal-content"
+                        style="max-width: 860px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);">
+                        <div class="modal-header"
+                            style="background: linear-gradient(135deg, #1e3a8a, #0f172a); padding: 16px 24px; color: white; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center;">
+                            <h3
+                                style="color: white; display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; margin: 0;">
+                                📖 Hướng Dẫn Sử Dụng & Pipeline Hoạt Động (A - Z)
+                            </h3>
+                            <span class="close" onclick="closeGuideModal()"
+                                style="cursor: pointer; font-size: 26px; font-weight: bold; color: rgba(255,255,255,0.85);">&times;</span>
+                        </div>
+
+                        <div class="modal-body"
+                            style="padding: 24px; background: #f8fafc; max-height: 78vh; overflow-y: auto;">
+                            <!-- Pipeline Banner Image -->
+                            <div
+                                style="border-radius: 12px; overflow: hidden; margin-bottom: 22px; border: 1.5px solid #cbd5e1; box-shadow: 0 4px 14px rgba(0,0,0,0.08);">
+                                <img src="/images/pipeline_guide.jpg" alt="Pipeline Hoạt Động ĐKHP"
+                                    style="width: 100%; height: auto; display: block;">
+                            </div>
+
+                            <!-- Step-by-Step Pipeline Cards -->
+                            <div style="display: flex; flex-direction: column; gap: 14px;">
+                                <!-- Step 1 -->
+                                <div
+                                    style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; border-radius: 10px; padding: 16px 18px;">
+                                    <div
+                                        style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #1e3a8a; margin-bottom: 6px;">
+                                        <span
+                                            style="background: #eff6ff; color: #2563eb; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">1</span>
+                                        🔑 Kích Hoạt Key & Đăng Nhập Tài Khoản Sinh Viên
+                                    </div>
+                                    <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">
+                                        Nhập <strong>Mã Key kích hoạt</strong> được cấp và đăng nhập bằng <strong>MSSV +
+                                            Mật khẩu Portal</strong>. Hệ thống tích hợp cơ chế <em>Ghi nhớ đăng
+                                            nhập</em> an toàn tuyệt đối trên trình duyệt của bạn (Zero Server Storage).
+                                    </p>
+                                </div>
+
+                                <!-- Step 2 -->
+                                <div
+                                    style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid #10b981; border-radius: 10px; padding: 16px 18px;">
+                                    <div
+                                        style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #065f46; margin-bottom: 6px;">
+                                        <span
+                                            style="background: #ecfdf5; color: #10b981; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">2</span>
+                                        📚 Chọn Môn Học Ở Bước 1 (Môn chính & Môn điều kiện)
+                                    </div>
+                                    <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">
+                                        Tại tab <strong>📚 Check môn học</strong>, chọn học kỳ và tích chọn các
+                                        <strong>📘 Môn học chính</strong> hoặc chuyển tab phụ để chọn thêm các
+                                        <strong>📗 Môn học điều kiện / GDTC / TA</strong>. Hệ thống tự động gom nhóm và
+                                        tính toán tổng số môn đã chọn.
+                                    </p>
+                                </div>
+
+                                <!-- Step 3 -->
+                                <div
+                                    style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid #f59e0b; border-radius: 10px; padding: 16px 18px;">
+                                    <div
+                                        style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #92400e; margin-bottom: 6px;">
+                                        <span
+                                            style="background: #fef3c7; color: #d97706; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">3</span>
+                                        🔍 Chọn Lớp Học Phần & Xem Trước Thời Khóa Biểu
+                                    </div>
+                                    <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">
+                                        Chuyển sang <strong>Bước 2</strong> để xem toàn bộ danh sách lớp của các môn đã
+                                        chọn. Có thể bấm <strong>📅 Xem trước TKB tuần</strong> để kiểm tra trùng lịch.
+                                        Tích chọn 1 hoặc nhiều lớp mong muốn cho mỗi môn.
+                                    </p>
+                                </div>
+
+                                <!-- Step 4 -->
+                                <div
+                                    style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid #ef4444; border-radius: 10px; padding: 16px 18px;">
+                                    <div
+                                        style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #991b1b; margin-bottom: 6px;">
+                                        <span
+                                            style="background: #fee2e2; color: #ef4444; width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px;">4</span>
+                                        ⏰ Bật Hẹn Giờ Tự Động (Sniper) hoặc Chạy Ngay
+                                    </div>
+                                    <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">
+                                        - <strong>Hẹn giờ mở cổng:</strong> Cài đặt giờ hẹn (ví dụ:
+                                        <code>08:59:58</code>) rồi bấm <strong>⏰ BẬT HẸN GIỜ</strong>. Hệ thống mở đồng
+                                        hồ đếm ngược mili-giây, tự warmup token 30s trước giờ G và tự động spam request
+                                        đúng thời khắc cổng mở.<br>
+                                        - <strong>Chạy ngay:</strong> Bấm <strong>⚡ CHẠY NGAY</strong> để spam trực tiếp
+                                        với tốc độ cực cao.
+                                    </p>
+                                </div>
+
+                                <!-- Step 5 (Smart Self-Healing) -->
+                                <div
+                                    style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px 18px;">
+                                    <div
+                                        style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: #166534; margin-bottom: 6px;">
+                                        🛡️ Cơ Chế Tự Động Dispatching & Auto Re-login Thông Minh
+                                    </div>
+                                    <ul
+                                        style="margin: 0; padding-left: 20px; font-size: 13px; color: #15803d; line-height: 1.6;">
+                                        <li><strong>Tự nhận diện API:</strong> Môn chính gửi tới endpoint chính quy, Môn
+                                            điều kiện tự chuyển tới endpoint điều kiện.</li>
+                                        <li><strong>Tự động loại bỏ môn đã xong:</strong> Ngay khi 1 môn đăng ký thành
+                                            công, hệ thống phát chuông thông báo, chuyển sang màu xanh và gạt môn đó ra
+                                            khỏi vòng lặp spam để dồn tài nguyên cho các môn còn lại.</li>
+                                        <li><strong>Tự động Re-login khi mất phiên (401):</strong> Nếu phiên hết hạn
+                                            giữa chừng, bot tự động lấy token mới và tiếp tục spam mà không làm gián
+                                            đoạn quá trình.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer"
+                            style="padding: 12px 24px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+                            <button class="btn btn-primary" onclick="closeGuideModal()"
+                                style="padding: 8px 24px; border-radius: 8px; font-weight: 600;">
+                                Đã hiểu, bắt đầu sử dụng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+    <div id="toast-container" class="toast-container"></div>
+    <script src="/js/api.js?v=7.6"></script>
+    <script src="/js/app.js?v=7.6"></script>
+</body>
+
+</html>

@@ -1,0 +1,33 @@
+{
+  "1": {
+    "key": "1",
+    "keyType": "regular",
+    "duration": "7days",
+    "createdAt": "2026-09-17T11:11:37.553Z",
+    "expiresAt": "2026-09-24T11:11:47.437Z",
+    "boundAt": "2026-09-17T11:11:47.435Z",
+    "deviceId": "fcbdddfe-6c83-46f4-aad8-1f581a404ef5",
+    "usageCount": 94,
+    "lastUsed": "2026-09-17T15:23:53.044Z"
+  },
+  "DKHP-FREE-DEMO": {
+    "key": "DKHP-FREE-DEMO",
+    "keyType": "shared",
+    "duration": "30days",
+    "createdAt": "2026-09-17T10:39:58.607Z",
+    "expiresAt": null,
+    "deviceId": null,
+    "usageCount": 0
+  },
+  "DKHP-PRO-VIP": {
+    "key": "DKHP-PRO-VIP",
+    "keyType": "shared",
+    "duration": "forever",
+    "createdAt": "2026-09-17T10:39:58.607Z",
+    "expiresAt": null,
+    "boundAt": "2026-09-17T10:40:25.585Z",
+    "deviceId": null,
+    "usageCount": 18,
+    "lastUsed": "2026-10-27T06:15:01Z"
+  }
+}
