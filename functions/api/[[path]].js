@@ -28,6 +28,54 @@ export async function onRequest(context) {
         return jsonResponse({ required: false });
     }
 
+    // The browser sends Portal calls as a base64-wrapped gateway payload.
+    if (pathStr === 'gateway' && request.method === 'POST') {
+        let payload;
+        try {
+            const body = await request.json();
+            const bytes = Uint8Array.from(atob(body.p), char => char.charCodeAt(0));
+            payload = JSON.parse(new TextDecoder().decode(bytes));
+        } catch (_) {
+            return jsonResponse({ success: false, message: 'Gateway payload không hợp lệ' }, 400);
+        }
+        const method = String(payload.method || 'GET').toUpperCase();
+        const endpoint = typeof payload.endpoint === 'string' ? payload.endpoint : '';
+        if (!['GET', 'POST', 'PUT', 'DELETE'].includes(method) ||
+            !/^\/(dkhp|dkhpdk|eventWeb)\//.test(endpoint) ||
+            /[\\#%]/.test(endpoint.split('?')[0]) || endpoint.includes('#') ||
+            endpoint.split('?')[0].split('/').some(part => part === '.' || part === '..')) {
+            return jsonResponse({ success: false, message: 'Endpoint không hợp lệ' }, 400);
+        }
+        let target;
+        try {
+            target = new URL(`${targetBaseUrl}${endpoint}`);
+            if (target.origin !== 'https://portal.ut.edu.vn' || !target.pathname.startsWith('/api/v1/')) throw new Error();
+        } catch (_) {
+            return jsonResponse({ success: false, message: 'Endpoint không hợp lệ' }, 400);
+        }
+        const headers = new Headers({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'Origin': 'https://portal.ut.edu.vn',
+            'Referer': 'https://portal.ut.edu.vn/'
+        });
+        if (payload.token) headers.set('Authorization', `Bearer ${payload.token}`);
+        try {
+            const options = { method, headers };
+            if (method !== 'GET' && payload.data != null) options.body = JSON.stringify(payload.data);
+            else if (method === 'POST') options.body = '{}';
+            const response = await fetch(target.toString(), options);
+            const bytes = new Uint8Array(await response.arrayBuffer());
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 0x8000) {
+                binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+            }
+            return jsonResponse({ r: btoa(binary) }, response.status);
+        } catch (_) {
+            return jsonResponse({ success: false, message: 'Không thể kết nối Portal' }, 502);
+        }
+    }
+
     // 1. Validate Key Endpoint
     if (pathStr === 'keys/validate') {
         let body = {};

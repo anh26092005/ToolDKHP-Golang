@@ -476,20 +476,20 @@ class ApiClient {
 
     async registerMainClass(classId) {
         const result = await this.request('POST', `/dkhp/dangKyLopHocPhan?idLopHocPhan=${classId}`);
-        const isSuccess = result.success !== false;
-        return { success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký thành công' : 'Đăng ký thất bại') };
+        const isSuccess = result.success === true;
+        return { ...result, success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký thành công' : 'Không xác định được kết quả đăng ký') };
     }
 
     async registerExtraClass(classId) {
         const result = await this.request('POST', `/dkhpdk/dangKyLopHocPhan?idLopHocPhan=${classId}`);
-        const isSuccess = result.success !== false;
-        return { success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký thành công' : 'Đăng ký thất bại') };
+        const isSuccess = result.success === true;
+        return { ...result, success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký thành công' : 'Không xác định được kết quả đăng ký') };
     }
 
     async registerImprovementClass(classId) {
         const result = await this.request('POST', `/dkhp/dangKyLopHocPhan?idLopHocPhan=${classId}`);
-        const isSuccess = result.success !== false;
-        return { success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký thành công' : 'Đăng ký thất bại') };
+        const isSuccess = result.success === true;
+        return { ...result, success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký thành công' : 'Không xác định được kết quả đăng ký') };
     }
 
     async cancelRegistration(idDangKy) {
