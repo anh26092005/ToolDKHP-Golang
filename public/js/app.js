@@ -644,12 +644,17 @@ async function runLocalRegisterLoop(initialClassIds, type, loop, delay, delayMax
                     updateStatus('Đang đăng ký tự động...');
                     iterationRetryNeeded = true;
                     break; // Ngắt batch này để thử lại ngay
-                } else {
-                    addLog('register-log', `❌ Không thể tự động đăng nhập lại cổng trường. Vui lòng đăng nhập lại bằng tay!`, 'error');
+                } else if (!api.getCredentials()) {
+                    addLog('register-log', `❌ Không có thông tin đăng nhập đã lưu. Vui lòng đăng nhập lại và chọn ghi nhớ.`, 'error');
                     stopAutoRegisterLocally('Hết phiên');
                     return;
+                } else {
+                    addLog('register-log', '⚠️ Chưa đăng nhập lại được. Chờ 5 giây rồi thử lại, giữ nguyên danh sách lớp.', 'warning');
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    iterationRetryNeeded = true;
+                    break;
                 }
-            } else if (result.isServerError || result.isNetworkError || (result.statusCode && result.statusCode >= 500)) {
+            } else if (result.isServerError || result.isNetworkError || result.isRateLimit || (result.statusCode && result.statusCode >= 500)) {
                 // Xử lý khi cổng trường nghẽn 500/502/503/504 hoặc rớt mạng
                 consecutiveServerErrorCount++;
                 const waitTime = Math.min(2000 + consecutiveServerErrorCount * 500, 5000);
@@ -2042,6 +2047,7 @@ async function runStep2LiveAutoRegister() {
 
     let iteration = 0;
     const maxLoop = _step2ModalLoopCount;
+    let consecutiveErrors = 0;
 
     while (iteration < maxLoop && _step2AutoRegisterRunning) {
         // Chỉ lấy những môn CHƯA thành công (môn đã thành công sẽ tự động bị loại bỏ)
@@ -2051,6 +2057,7 @@ async function runStep2LiveAutoRegister() {
         }
 
         iteration++;
+        let retryIteration = false;
         addStep2ModalLog(`===== Vòng spam ${iteration}/${maxLoop} (Còn ${pendingGroups.length} môn chưa xong) =====`, 'info');
 
         for (const group of pendingGroups) {
@@ -2080,9 +2087,25 @@ async function runStep2LiveAutoRegister() {
                         result = await api.registerMainClass(classId);
                     }
                 } catch (err) {
-                    result = { success: false, message: err.message || 'Lỗi kết nối' };
+                    result = { success: false, isNetworkError: true, message: err.message || 'Lỗi kết nối' };
                 }
 
+                if (result && (result.isUnauthorized || result.isServerError || result.isNetworkError || result.isRateLimit || result.statusCode >= 500)) {
+                    if (result.isUnauthorized && !api.getCredentials()) {
+                        addStep2ModalLog('❌ Phiên hết hạn và không có thông tin đăng nhập đã lưu. Hãy đăng nhập lại và chọn ghi nhớ.', 'error');
+                        _step2AutoRegisterRunning = false;
+                        break;
+                    }
+                    consecutiveErrors++;
+                    const waitMs = Math.min(2000 + consecutiveErrors * 500, 5000);
+                    group.currentMsg = `Portal chưa sẵn sàng, thử lại sau ${waitMs / 1000} giây`;
+                    updateCourseSpamMsg(group.maHocPhan, group.currentMsg, '#b45309');
+                    addStep2ModalLog(`⚠️ ${group.currentMsg}. Giữ nguyên danh sách và lượt thử.`, 'warning');
+                    await new Promise(r => setTimeout(r, waitMs));
+                    retryIteration = true;
+                    break;
+                }
+                consecutiveErrors = 0;
                 if (result && result.success) {
                     group.status = 'success';
                     group.successfulClassId = String(classId);
@@ -2116,8 +2139,13 @@ async function runStep2LiveAutoRegister() {
             if (group.status !== 'success') {
                 group.status = 'waiting';
             }
+            if (retryIteration) break;
         }
 
+        if (retryIteration) {
+            iteration--;
+            continue;
+        }
         // Delay ngẫu nhiên giữa các vòng lặp
         if (_step2AutoRegisterRunning && _activeCourseGroups.some(g => g.status !== 'success')) {
             const loopDelay = getRandomSpamDelay();

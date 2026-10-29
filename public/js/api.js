@@ -64,6 +64,7 @@ class ApiClient {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
+                    signal: AbortSignal.timeout(15000),
                     body: JSON.stringify({
                         username: creds.username,
                         password: creds.password
@@ -148,7 +149,8 @@ class ApiClient {
         const options = {
             method: requestMethod,
             headers,
-            credentials: 'include'
+            credentials: 'include',
+            signal: AbortSignal.timeout(15000)
         };
         if (requestBody) {
             options.body = requestBody;
@@ -173,7 +175,8 @@ class ApiClient {
                             return await this.request(method, endpoint, data, true);
                         }
                     }
-                    this.clearSession();
+                    // Keep the running registration and its saved credentials intact.
+                    // The caller can retry login while the Portal is unavailable.
                 }
                 let msg = 'Tài khoản hoặc mật khẩu không chính xác';
                 try {
