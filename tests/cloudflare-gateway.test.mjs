@@ -39,3 +39,17 @@ test('gateway rejects invalid paths and malformed bodies', async () => {
         assert.equal((await onRequest({ request: invalid, params: { path: ['gateway'] }, env: {} })).status, 400);
     }
 });
+
+test('key-management routes are removed without forwarding to Portal', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => { throw new Error('unexpected Portal request'); };
+    try {
+        for (const path of ['keys/validate', 'keys/admin/login', 'keys/admin/keys']) {
+            const request = new Request('https://example.pages.dev/api/' + path, { method: 'POST' });
+            const response = await onRequest({ request, params: { path: path.split('/') }, env: {} });
+            assert.equal(response.status, 404);
+        }
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});

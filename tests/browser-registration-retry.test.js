@@ -165,3 +165,62 @@ test('60 browser sessions recover independently after a simulated 30-minute outa
         global.fetch = originalFetch;
     }
 });
+
+test('20 logged-in users start one registration each at the same scheduled time', async () => {
+    const workerSource = fs.readFileSync('functions/api/[[path]].js', 'utf8');
+    const { onRequest } = await import(`data:text/javascript;base64,${Buffer.from(workerSource).toString('base64')}`);
+    const apiSource = fs.readFileSync('public/js/api.js', 'utf8');
+    const originalFetch = global.fetch;
+    let active = 0;
+    let maxActive = 0;
+    const registered = new Set();
+    let release;
+    const scheduledTime = new Promise(resolve => { release = resolve; });
+    try {
+        global.fetch = async (url, options) => {
+            const target = new URL(url);
+            if (target.pathname.endsWith('/user/login')) {
+                const credentials = JSON.parse(Buffer.from(options.body).toString());
+                return new Response(JSON.stringify({ success: true, token: `token-${credentials.username}` }));
+            }
+            if (target.pathname.endsWith('/user/getSummaryProfile')) {
+                return new Response(JSON.stringify({ success: true, body: { maSinhVien: 'student' } }));
+            }
+            assert.ok(target.pathname.endsWith('/dkhp/dangKyLopHocPhan'));
+            const classId = target.searchParams.get('idLopHocPhan');
+            const token = options.headers.get('Authorization');
+            assert.equal(token, `Bearer token-user${classId}`);
+            active++;
+            maxActive = Math.max(maxActive, active);
+            await new Promise(resolve => setTimeout(resolve, 50));
+            active--;
+            registered.add(classId);
+            return new Response('{"success":true,"message":"Registered"}');
+        };
+        const users = Array.from({ length: 20 }, (_, user) => {
+            const values = new Map();
+            const context = {
+                localStorage: { getItem: key => values.get(key) || null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) },
+                window: { location: {} }, AbortSignal, Response, console,
+                btoa, atob, encodeURIComponent, decodeURIComponent, escape, unescape,
+                fetch: async (url, options) => onRequest({ request: new Request('https://example.workers.dev' + url, options), params: { path: url.slice('/api/'.length).split('/') }, env: {} })
+            };
+            vm.createContext(context);
+            vm.runInContext(apiSource + '\nthis.client = api;', context);
+            return context.client;
+        });
+        const logins = await Promise.all(users.map((client, user) => client.login(`user${user}`, 'test-password')));
+        assert.equal(logins.filter(result => result.success).length, 20);
+        const registrations = users.map(async (client, user) => {
+            await scheduledTime;
+            return client.registerMainClass(String(user));
+        });
+        release();
+        const results = await Promise.all(registrations);
+        assert.equal(results.filter(result => result.success).length, 20);
+        assert.equal(registered.size, 20);
+        assert.ok(maxActive > 1, `expected concurrent upstream requests, got ${maxActive}`);
+    } finally {
+        global.fetch = originalFetch;
+    }
+});

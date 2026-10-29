@@ -19,6 +19,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -82,7 +83,6 @@ func setupRouter() *gin.Engine {
 		}
 		c.Next()
 	})
-	r.Use(handlers.RequireDesktopLicense())
 
 	// ===== Static Files =====
 	// Phục vụ thư mục /public từ thư mục cha (nơi chứa Node.js project)
@@ -90,13 +90,10 @@ func setupRouter() *gin.Engine {
 	r.Static("/css", filepath.Join(publicDir, "css"))
 	r.Static("/js", filepath.Join(publicDir, "js"))
 	r.Static("/images", filepath.Join(publicDir, "images"))
-	r.StaticFile("/admin.html", filepath.Join(publicDir, "admin.html"))
 
 	// ===== API Routes =====
 
 	// Auth routes (/api/user/*)
-	r.GET("/api/license/config", handlers.GetLicenseConfig)
-	r.POST("/api/license/validate", handlers.PostDesktopLicense)
 	userGroup := r.Group("/api/user")
 	{
 		userGroup.POST("/login", handlers.PostLogin)
@@ -104,22 +101,6 @@ func setupRouter() *gin.Engine {
 		userGroup.GET("/validate", handlers.GetValidate)
 		userGroup.POST("/logout", handlers.PostLogout)
 		userGroup.GET("/me", handlers.GetCurrentUser)
-	}
-
-	// Keys routes (/api/keys/*)
-	keysGroup := r.Group("/api/keys")
-	{
-		keysGroup.POST("/validate", handlers.PostValidateKey)
-		keysGroup.POST("/admin/login", handlers.PostAdminLogin)
-
-		adminKeys := keysGroup.Group("/admin", handlers.RequireAdmin())
-		{
-			adminKeys.POST("/keys/generate", handlers.PostAdminGenerateKey)
-			adminKeys.GET("/keys", handlers.GetAdminKeys)
-			adminKeys.DELETE("/keys/:key", handlers.DeleteAdminKey)
-			adminKeys.POST("/keys/:key/reset", handlers.PostAdminResetKey)
-			adminKeys.GET("/stats", handlers.GetAdminStats)
-		}
 	}
 
 	// Events routes (/api/events/*)
@@ -169,6 +150,10 @@ func setupRouter() *gin.Engine {
 
 	// SPA fallback: serve index.html for all other routes
 	r.NoRoute(func(c *gin.Context) {
+		if c.Request.URL.Path == "/admin.html" || c.Request.URL.Path == "/api/keys" || strings.HasPrefix(c.Request.URL.Path, "/api/keys/") {
+			c.Status(http.StatusNotFound)
+			return
+		}
 		c.File(filepath.Join(publicDir, "index.html"))
 	})
 

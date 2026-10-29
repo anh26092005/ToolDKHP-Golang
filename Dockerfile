@@ -33,9 +33,8 @@ ENV TZ=Asia/Ho_Chi_Minh
 # Copy binary từ build stage
 COPY --from=builder /build/dkhp-server /app/dkhp-server
 
-# Copy static frontend và data ban đầu
+# Copy static frontend
 COPY public/ /app/public/
-COPY data/ /app/data/
 
 # Expose port (mặc định single port 3000 khi deploy VPS)
 EXPOSE 3000

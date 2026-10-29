@@ -13,7 +13,6 @@ class ApiClient {
         this.token = localStorage.getItem('dkhp_token') || null;
         this.studentInfo = JSON.parse(localStorage.getItem('dkhp_student') || 'null');
         this._reloginPromise = null;
-        this.licenseRequired = false;
 
         // Auto register state
         this.autoRegisterRunning = false;
@@ -159,13 +158,6 @@ class ApiClient {
         try {
             const response = await fetch(targetUrl, options);
 
-            // A desktop license session can expire or disappear after restart.
-            if (response.status === 403 && this.licenseRequired && !isRetry) {
-                const keyResult = await this.validateKey(this.getAccessKey());
-                if (keyResult.allowed) return await this.request(method, endpoint, data, true);
-                return { success: false, message: keyResult.message || 'Vui lòng kích hoạt key' };
-            }
-
             // Handle 401 (Unauthorized)
             if (response.status === 401) {
                 if (endpoint !== '/user/login') {
@@ -242,42 +234,6 @@ class ApiClient {
                 message: `Lỗi kết nối mạng: ${error.message}`,
                 isNetworkError: true
             };
-        }
-    }
-
-    // ==================== Device ID & Access Key ====================
-
-    getDeviceId() {
-        let deviceId = localStorage.getItem('dkhp_device_id');
-        if (!deviceId) {
-            deviceId = 'device_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('dkhp_device_id', deviceId);
-        }
-        return deviceId;
-    }
-
-    getAccessKey() {
-        return localStorage.getItem('dkhp_access_key') || '';
-    }
-
-    saveAccessKey(key) {
-        if (key) {
-            localStorage.setItem('dkhp_access_key', key.trim().toUpperCase());
-        } else {
-            localStorage.removeItem('dkhp_access_key');
-        }
-    }
-
-    async validateKey(key) {
-        if (!this.licenseRequired) return { allowed: true };
-        try {
-            const response = await fetch('/api/license/validate', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', body: JSON.stringify({ key })
-            });
-            return await response.json();
-        } catch (_) {
-            return { allowed: false, message: 'Không thể kết nối máy chủ xác thực key' };
         }
     }
 

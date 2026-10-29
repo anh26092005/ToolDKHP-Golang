@@ -40,7 +40,6 @@ go-backend/
     ├── proxy.go               # Generic Proxy & Obfuscated Gateway (Base64)
     ├── registration.go        # ĐKHP thủ công, Auto Engine, Realtime HTML /view-logs
     ├── events.go              # Auto Sự kiện, Realtime HTML /api/events/view-logs
-    └── keys.go                # Bản quyền Key, Quản trị Admin, Device Binding
 ```
 
 ---
@@ -93,5 +92,4 @@ docker run -d --name dkhp-app -p 3000:3000 -v $(pwd)/data:/app/data dkhp-golang
 1. ✅ **Giao diện & Tài nguyên tĩnh:** Tự động load đầy đủ CSS, JS, hình ảnh, icon từ thư mục `/public`.
 2. ✅ **Obfuscated Gateway (`/api/gateway`):** Giải mã và mã hóa Base64 tương thích chuẩn UTF-8 Tiếng Việt, bảo mật luồng mạng với Portal trường.
 3. ✅ **Cơ chế Auto-Relogin:** Khi token hết hạn (401), hệ thống tự động tái xác thực với Portal và cập nhật token mới tức thì.
-4. ✅ **Hệ thống Quản lý Key (`/api/keys`):** Đọc ghi an toàn đa luồng trên file `data/keys.json`, quản lý key VIP/Dùng thử/Thiết bị.
 5. ✅ **Trang Realtime Log HTML (`/api/registration/view-logs` & `/api/events/view-logs`):** Xem tiến trình quét lớp, huỷ nhóm môn trùng, dừng phiên mọi lúc.

@@ -22,38 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.documentElement.removeAttribute('data-theme');
         if (document.body) document.body.removeAttribute('data-theme');
     } catch (e) { }
-    // Restore saved Access Key
-    let savedKey = '';
-    try {
-        savedKey = api.getAccessKey();
-        const keyInput = document.getElementById('access-key-input');
-        if (savedKey && keyInput) {
-            keyInput.value = savedKey;
-        }
-    } catch (e) { }
-
-    // The desktop build needs an online license before using its API.
-    let licenseAllowed = false;
-    try {
-        const configResponse = await fetch('/api/license/config');
-        if (configResponse.ok) {
-            const config = await configResponse.json();
-            api.licenseRequired = config.required === true;
-        }
-        // Cloudflare Pages does not expose this desktop-only endpoint.
-        licenseAllowed = !api.licenseRequired;
-        if (api.licenseRequired) {
-            document.getElementById('access-key-group').style.display = '';
-            const keyResult = await api.validateKey(savedKey);
-            licenseAllowed = keyResult.allowed === true;
-            if (!licenseAllowed && savedKey) showError(document.getElementById('login-error'), keyResult.message || 'Key không hợp lệ');
-        }
-    } catch (_) {
-        licenseAllowed = false;
-        showError(document.getElementById('login-error'), 'Không thể kiểm tra cấu hình key');
-    }
-    let result = licenseAllowed ? await api.validateSession() : { success: false };
-    if (licenseAllowed && !result.success) {
+    let result = await api.validateSession();
+    if (!result.success) {
         // Tự động kiểm tra và đăng nhập lại bằng thông tin đã lưu nếu token cũ đã hết hạn
         const relogged = await api.tryAutoRelogin();
         if (relogged) {
@@ -257,20 +227,6 @@ async function handleLogin(e) {
 
     try {
         let result;
-
-        // Desktop builds validate the key with Cloudflare before Portal login.
-        const accessKeyInput = document.getElementById('access-key-input');
-        const accessKey = accessKeyInput ? accessKeyInput.value.trim() : '';
-        if (api.licenseRequired) {
-            const keyResult = await api.validateKey(accessKey);
-            if (!keyResult.allowed) {
-                showError(errorEl, keyResult.message || 'Key không hợp lệ');
-                return;
-            }
-        }
-        if (accessKey) {
-            api.saveAccessKey(accessKey);
-        }
 
         if (currentLoginTab === 'portal') {
             const usernameInput = document.getElementById('username-input');

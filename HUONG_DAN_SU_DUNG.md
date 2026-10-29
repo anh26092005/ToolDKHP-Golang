@@ -29,7 +29,6 @@
 2. Nhập các thông tin:
    - **Tên đăng nhập:** Mã số sinh viên của bạn (ví dụ: `05xxxx`).
    - **Mật khẩu:** Mật khẩu đăng nhập trang Portal trường (`portal.ut.edu.vn`).
-   - **Mã Key kích hoạt:** Mã bản quyền do người quản trị cấp.
    - Tích chọn ô: **"Ghi nhớ & Tự động đăng nhập lại khi mất phiên"** (Khuyên dùng để bot tự động đăng nhập lại nếu trường bắt đăng xuất).
    
 3. Nhấn **Đăng nhập**.

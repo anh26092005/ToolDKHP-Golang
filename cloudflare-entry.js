@@ -4,6 +4,7 @@ import { onRequest, onRequestOptions } from './functions/api/[[path]].js';
 export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
+        if (url.pathname === '/admin.html') return new Response('Not Found', { status: 404 });
         if (url.pathname.startsWith('/api/')) {
             if (request.method === 'OPTIONS') return onRequestOptions();
             const path = url.pathname.slice('/api/'.length).split('/').filter(Boolean);

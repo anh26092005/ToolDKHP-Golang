@@ -178,34 +178,6 @@ func (s *AutoEventSession) DrainLogs() []LogEntry {
 	return logs
 }
 
-// ========== Keys ==========
-
-// KeyData lưu thông tin một license key
-type KeyData struct {
-	Key        string `json:"key"`
-	KeyType    string `json:"keyType"`
-	Duration   string `json:"duration"`
-	CreatedAt  string `json:"createdAt"`
-	ExpiresAt  *string `json:"expiresAt"`
-	BoundAt    *string `json:"boundAt,omitempty"`
-	DeviceID   *string `json:"deviceId"`
-	UsageCount int    `json:"usageCount"`
-	LastUsed   string `json:"lastUsed,omitempty"`
-}
-
-// KeyValidateRequest là payload kiểm tra key
-type KeyValidateRequest struct {
-	Key      string `json:"key"`
-	DeviceID string `json:"deviceId,omitempty"`
-}
-
-// KeyGenerateRequest là payload tạo key mới
-type KeyGenerateRequest struct {
-	KeyType   string `json:"keyType"`
-	Duration  string `json:"duration"`
-	CustomKey string `json:"customKey,omitempty"`
-}
-
 // RegisterClassRequest là payload đăng ký lớp thủ công
 type RegisterClassRequest struct {
 	ClassID interface{} `json:"classId"`

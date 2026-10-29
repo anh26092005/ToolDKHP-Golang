@@ -7,13 +7,6 @@ echo.
 
 cd /d "%~dp0go-backend"
 
-if not defined KEY_SERVER_URL set /p "KEY_SERVER_URL=Nhap URL Cloudflare Worker (https://...): "
-if not defined KEY_SERVER_URL (
-    echo [x] Can URL Cloudflare Worker de build EXE co key.
-    pause
-    exit /b 1
-)
-
 echo [*] Đang kiểm tra mã nguồn Go và tải dependencies...
 go mod download
 if %ERRORLEVEL% neq 0 (
@@ -23,7 +16,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo [*] Đang biên dịch tối ưu hóa (stripping debug info)...
-go build -ldflags "-s -w -X dkhp-backend/config.LicenseServerURL=%KEY_SERVER_URL%" -o "%~dp0dkhp-tool-golang.exe" main.go
+go build -ldflags "-s -w" -o "%~dp0dkhp-tool-golang.exe" main.go
 if %ERRORLEVEL% neq 0 (
     echo [x] Lỗi biên dịch thất bại!
     pause

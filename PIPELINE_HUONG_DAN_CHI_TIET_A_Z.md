@@ -6,7 +6,7 @@
 1. [Giới Thiệu Tổng Quan & Triết Lý Thiết Kế](#1-giới-thiệu-tổng-quan--triết-lý-thiết-kế)
 2. [Kiến Trúc Kỹ Thuật (Architecture & Tech Stack)](#2-kiến-trúc-kỹ-thuật-architecture--tech-stack)
 3. [Chi Tiết Pipeline Hoạt Động Từng Bước (A - Z)](#3-chi-tiết-pipeline-hoạt-động-từng-bước-a---z)
-   - [Bước 1: Hệ Thống Bản Quyền & Kích Hoạt Key](#bước-1-hệ-thống-bản-quyền--kích-hoạt-key)
+   - [Bước 1: Đăng nhập](#bước-1-đăng-nhập)
    - [Bước 2: Xác Thực Đăng Nhập & Bảo Mật Không Lưu Trữ](#bước-2-xác-thực-đăng-nhập--bảo-mật-không-lưu-trữ)
    - [Bước 3: Tự Động Tải & Phân Loại Môn Học (Chính & Điều Kiện)](#bước-3-tự-động-tải--phân-loại-môn-học-chính--điều-kiện)
    - [Bước 4: Cấu Hình Lớp Học Phần & Phân Tích Trùng Lịch Tuần](#bước-4-cấu-hình-lớp-học-phần--phân-tích-trùng-lịch-tuần)
@@ -49,7 +49,6 @@
 │                 NODE.JS EXPRESS BACKEND GATEWAY             │
 │  - Multi-Port Clustering (Port 3000 -> 3009)                │
 │  - /gateway (Encrypted Payload Proxy & Disguise)           │
-│  - /api/keys (License Manager & HWID Device Binding)        │
 │  - /api/auth (Login & Session Dispatcher)                   │
 └──────────────────────────────┬──────────────────────────────┘
                                │ HTTPS (Proxy Headers & Session)
@@ -87,14 +86,8 @@ graph TD
 
 ---
 
-### Bước 1: Hệ Thống Bản Quyền & Kích Hoạt Key
-- **Cơ chế xác thực:** Mỗi người dùng cần có **Mã Key kích hoạt** hợp lệ do Admin cấp phát.
-- **Ràng buộc thiết bị (HWID Fingerprinting):** Hệ thống tự động tạo mã nhận diện thiết bị duy nhất từ thông số trình duyệt/màn hình để chống chia sẻ key tràn lan.
-- **Phân loại Key:**
-  - `Shared`: Key dùng chung cho nhiều thiết bị (VD: `DKHP-PRO-VIP`).
-  - `Normal`: Key giới hạn số lượng thiết bị kích hoạt (1 thiết bị / key).
-  - Thời hạn đa dạng: 1 ngày, 7 ngày, 30 ngày hoặc Vĩnh viễn (`forever`).
-- **Trang Quản trị bí mật:** `/admin.html` (Mật khẩu: `Concat123@`) hỗ trợ tạo key hàng loạt, reset HWID và theo dõi thống kê.
+### Bước 1: Đăng nhập
+- Đăng nhập bằng tài khoản Portal hoặc token. Quản trị key thuộc dự án riêng.
 
 ---
 
@@ -198,7 +191,6 @@ sequenceDiagram
 | :--- | :---: | :--- | :--- |
 | `/api/auth/login` | `POST` | `/api/v1/user/login` | Đăng nhập tài khoản sinh viên |
 | `/api/auth/logout` | `POST` | `/api/v1/user/logout` | Đăng xuất phiên làm việc |
-| `/api/keys/validate` | `POST` | Nội bộ | Kiểm tra tính hợp lệ & HWID của Key |
 | `/gateway` | `POST` | Proxy trung gian | Mã hóa & chuyển tiếp request an toàn |
 | `/api/dkhp/getHocPhanHocMoi` | `GET` | `/api/v1/dkhp/getHocPhanHocMoi` | Lấy danh sách môn học chính |
 | `/api/dkhpdk/getHocPhanHocMoi` | `GET` | `/api/v1/dkhpdk/getHocPhanHocMoi` | Lấy danh sách môn điều kiện |
@@ -227,7 +219,7 @@ Dark slate blue and neon cyan accents, glowing glassmorphism cards, glowing badg
 ```text
 A complete horizontal UI/UX product workflow pipeline infographic diagram for an automated university course enrollment application. 
 Showing 4 distinct interactive glassmorphism UI card modules from left to right connected by glowing cyan neon data streams: 
-Module 1: License key input and student authentication login form. 
+Module 1: Student authentication login form.
 Module 2: Course catalog selection grid with Main Course (Blue badge) and Conditional Course (Green badge). 
 Module 3: Class list selector with live capacity progress bars and weekly timetable planner. 
 Module 4: Sniper countdown clock with high-frequency API spam dispatcher and auto-recovery status stream. 
@@ -275,4 +267,3 @@ docker run -d -p 3000:3000 --name dkhp-app dkhp-web:latest
 > **Trả lời:** Tuyệt đối an toàn. Toàn bộ thông tin mật khẩu chỉ lưu trong bộ nhớ máy tính của bạn (Local Storage) và gửi trực tiếp qua cổng Gateway bảo mật của hệ thống đến thẳng Portal của trường.
 
 ---
-

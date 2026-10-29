@@ -42,7 +42,6 @@ Truy cập hệ thống qua trình duyệt web tại địa chỉ: `http://local
 ![Giao diện đăng nhập](file:///c:/Users/asus/Documents/Dev/web-dkhp/public/index.html)
 
 ### Các trường thông tin cần nhập:
-1. **🔑 Key truy cập:** Nhập mã bản quyền do admin cấp (chữ in hoa, ví dụ: `UTHVIP-2026`).
 2. **Mã sinh viên (MSSV):** Nhập mã số sinh viên của bạn (ví dụ: `2251120001`).
 3. **Mật khẩu:** Mật khẩu đăng nhập vào cổng thông tin sinh viên UTH (`portal.ut.edu.vn`).
 
@@ -209,7 +208,6 @@ Dùng để tra cứu danh mục toàn bộ các môn học và các lớp học
 
 | Triệu chứng / Thông báo | Nguyên nhân | Hướng dẫn khắc phục |
 |:---|:---|:---|
-| **"Key không hợp lệ hoặc đã hết hạn"** | Nhập sai Key hoặc Key đã qua ngày sử dụng | Kiểm tra xem có thừa dấu cách không, đảm bảo viết hoa đầy đủ mã Key hoặc liên hệ quản trị viên cấp key mới. |
 | **"Đăng nhập thất bại / Sai tài khoản hoặc mật khẩu"** | Thông tin đăng nhập portal UTH không đúng | Kiểm tra xem bàn phím có bật CapsLock hoặc gõ dấu tiếng Việt trong mật khẩu không. Thử đăng nhập lại trên trang `portal.ut.edu.vn` để xác thực. |
 | **"Phiên đăng nhập hết hạn (Session Expired)"** | Token đăng nhập của trường hết thời hạn (thường sau vài tiếng) | Bấm nút **"Đăng xuất"** ở góc trên bên phải, sau đó tiến hành đăng nhập lại để nhận token mới. |
 | **"Lớp học phần đã hết số lượng cho phép"** | Lớp đã đủ sĩ số tối đa | Ngay lập tức dùng danh sách ID lớp dự phòng đã chuẩn bị ở Tab Lịch dự kiến và bấm đăng ký lại. |
