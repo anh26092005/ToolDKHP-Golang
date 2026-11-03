@@ -786,6 +786,137 @@ body {
     accent-color: var(--primary);
 }
 
+/* ==================== Events ==================== */
+#tab-events [hidden] {
+    display: none !important;
+}
+
+.event-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.event-form-grid .form-group {
+    min-width: 0;
+}
+
+.event-auto-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.event-help {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 6px;
+}
+
+.event-date-fieldset {
+    border: 0;
+    min-width: 0;
+    margin-bottom: 16px;
+}
+
+.event-date-fieldset legend {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.event-date-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.event-date-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    cursor: pointer;
+    background: var(--bg-secondary);
+}
+
+.event-date-card:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.event-date-card:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.event-date-card input {
+    accent-color: var(--primary);
+}
+
+.event-date-card strong, .event-date-card small {
+    display: block;
+}
+
+.event-date-card small {
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.event-preview {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    min-width: 0;
+}
+
+.event-preview h4 {
+    margin-bottom: 8px;
+}
+
+.event-preview code, .event-preview pre {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+}
+
+.event-preview pre {
+    margin-top: 10px;
+}
+
+.event-actions {
+    margin: 16px 0 10px;
+    flex-wrap: wrap;
+}
+
+.event-browser-note {
+    padding: 12px;
+    border-radius: var(--radius-md);
+    background: var(--info-bg);
+    color: #1e40af;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+#event-run-config, #event-log .log-message {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 540px) {
+    .event-form-grid, .event-auto-grid, .event-date-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .event-actions .btn {
+        flex: 1 1 160px;
+    }
+}
+
 /* ==================== Tables ==================== */
 .table-wrapper {
     overflow-x: auto;
@@ -2964,4 +3095,4 @@ body {
         transform: scale(0.8);
     }
 }
-
+

@@ -85,8 +85,8 @@ function restoreRegisterFormState() {
             if (state.timer !== undefined && document.getElementById('register-timer-input')) {
                 document.getElementById('register-timer-input').value = state.timer;
             }
-            if (state.mode && document.getElementById('register-mode')) {
-                document.getElementById('register-mode').value = state.mode;
+            if (document.getElementById('register-mode')) {
+                document.getElementById('register-mode').value = 'browser';
             }
         } else {
             if (document.getElementById('register-delay')) document.getElementById('register-delay').value = '50';
@@ -155,6 +155,7 @@ function setupEventListeners() {
 
     // Initialize improvement class lookup
     initImprovementLookup();
+    setupEventForm();
 }
 
 // ==================== Auth ====================
@@ -306,6 +307,8 @@ async function handleLogin(e) {
 async function handleLogout() {
     if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
 
+    saveEventFormState();
+    stopAutoEvent();
     await api.logout();
     showLoginPage();
     showToast('Đã đăng xuất', 'info');
@@ -397,22 +400,11 @@ function showDashboard(studentInfo) {
 
     // Tự động khôi phục lại các môn học và cấu hình đã nhập trước đó
     try { restoreRegisterFormState(); } catch (e) { }
+    restoreEventFormState();
 
     // Prefetch registered schedules
     try { updateRegisteredSchedules(); } catch (e) { }
 
-    api.getAutoRegisterStatus().then(res => {
-        if (res && res.success && (res.status === 'running' || res.status === 'waiting')) {
-            autoRegisterRunning = true;
-            const startBtn = document.getElementById('start-register-btn');
-            const stopBtn = document.getElementById('stop-register-btn');
-            if (startBtn) startBtn.disabled = true;
-            if (stopBtn) stopBtn.disabled = false;
-            updateStatus(res.status === 'waiting' ? 'Đã hẹn giờ trên máy chủ' : 'Đang chạy ngầm trên máy chủ...');
-            addLog('register-log', '🔄 Phát hiện tiến trình ĐKHP ngầm đang chạy trên máy chủ! Đang đồng bộ log...', 'info');
-            startAutoRegisterPolling();
-        }
-    }).catch(() => {});
 }
 
 function switchTab(tab) {
@@ -430,7 +422,7 @@ function switchTab(tab) {
 }
 
 // ==================== Auto Registration (Tab 1) ====================
-// Global variables for backend auto register
+// Cloudflare registration runs in the open browser tab.
 let autoRegisterRunning = false;
 let autoRegisterTimeout = null;
 
@@ -443,7 +435,6 @@ async function startAutoRegister() {
     const delay = parseInt(document.getElementById('register-delay').value) || 50;
     const delayMax = parseInt(document.getElementById('register-delay-max')?.value) || 100;
     const timerInput = document.getElementById('register-timer-input').value;
-    const mode = document.getElementById('register-mode')?.value || 'browser';
 
     let targetTimeStr = null;
     if (timerInput) {
@@ -489,42 +480,7 @@ async function startAutoRegister() {
         }
     };
 
-    if (mode === 'server') {
-        if (targetTimeStr) {
-            addLog('register-log', `⏳ Đang gửi lịch hẹn giờ lên máy chủ (thời gian: ${new Date(targetTimeStr).toLocaleTimeString('vi-VN')})...`, 'info');
-            updateStatus('Đang đẩy lên máy chủ...');
-        } else {
-            addLog('register-log', `🚀 Đang khởi chạy đăng ký ngầm trên máy chủ (${loop} lượt, ${classIds.length} môn)...`, 'info');
-            updateStatus('Đang kết nối máy chủ...');
-        }
-
-        try {
-            const credentials = api.getCredentials();
-            const result = await api.startAutoRegister(classIds, type, loop, delay, delayMax, targetTimeStr, credentials, _activeCourseGroups);
-            if (result.success) {
-                if (targetTimeStr) {
-                    addLog('register-log', `✅ Đã lưu hẹn giờ lên máy chủ! Bạn có thể tắt trình duyệt, đúng giờ hệ thống sẽ tự chạy ngầm.`, 'success');
-                    addLog('register-log', `🔗 Xem nhật ký chạy ngầm tại: <a href="/api/registration/view-logs" target="_blank" style="color:#60a5fa;text-decoration:underline;">/api/registration/view-logs</a>`, 'info');
-                    addLog('register-log', `👀 Đang kết nối trực tiếp để theo dõi log máy chủ...`, 'info');
-                    updateStatus('Đã hẹn giờ trên máy chủ');
-                } else {
-                    addLog('register-log', `✅ Đã bắt đầu chạy ngầm trên máy chủ! Bạn có thể tắt tab hoặc chuyển trang thoải mái.`, 'success');
-                    addLog('register-log', `🔗 Xem nhật ký chạy ngầm tại: <a href="/api/registration/view-logs" target="_blank" style="color:#60a5fa;text-decoration:underline;">/api/registration/view-logs</a>`, 'info');
-                    updateStatus('Đang chạy ngầm trên máy chủ...');
-                }
-                startAutoRegisterPolling();
-            } else {
-                addLog('register-log', `⚠️ Máy chủ không chạy ngầm được (${result.message || 'Lỗi'}). Chuyển sang chạy trực tiếp trên trình duyệt...`, 'warning');
-                runLocalDirect();
-            }
-        } catch (error) {
-            addLog('register-log', `⚠️ Không thể kết nối chạy ngầm (${error.message}). Chuyển sang chạy trực tiếp trên trình duyệt...`, 'warning');
-            runLocalDirect();
-        }
-    } else {
-        // Mặc định chạy trực tiếp trên trình duyệt
-        runLocalDirect();
-    }
+    runLocalDirect();
 }
 
 async function runLocalRegisterLoop(initialClassIds, type, loop, delay, delayMax) {
@@ -657,82 +613,14 @@ function stopAutoRegisterLocally(statusText) {
         clearTimeout(autoRegisterTimeout);
         autoRegisterTimeout = null;
     }
-    if (backendPollInterval) {
-        clearInterval(backendPollInterval);
-        backendPollInterval = null;
-    }
     document.getElementById('start-register-btn').disabled = false;
     document.getElementById('stop-register-btn').disabled = true;
     updateStatus(statusText || 'Sẵn sàng');
 }
 
-let backendPollInterval = null;
-
-function startAutoRegisterPolling() {
-    if (backendPollInterval) clearInterval(backendPollInterval);
-
-    backendPollInterval = setInterval(async () => {
-        if (!autoRegisterRunning) {
-            clearInterval(backendPollInterval);
-            backendPollInterval = null;
-            return;
-        }
-
-        try {
-            const res = await api.getAutoRegisterStatus();
-            if (res.success) {
-                if (res.logs && res.logs.length > 0) {
-                    res.logs.forEach(log => {
-                        addLog('register-log', log.message, log.type);
-                    });
-                }
-
-                // Cập nhật textarea ID môn học còn lại nếu môn trước đó thành công
-                if (Array.isArray(res.pendingClassIds)) {
-                    const textarea = document.getElementById('class-ids');
-                    if (textarea) {
-                        const currentVal = textarea.value.split('\n').map(s => s.trim()).filter(Boolean).join('\n');
-                        const newVal = res.pendingClassIds.join('\n');
-                        if (currentVal !== newVal) {
-                            textarea.value = newVal;
-                        }
-                    }
-                }
-
-                // Cập nhật lịch học nếu có môn đăng ký thành công
-                if (Array.isArray(res.successfulClassIds) && res.successfulClassIds.length > 0) {
-                    if (typeof updateRegisteredSchedules === 'function') {
-                        updateRegisteredSchedules();
-                    }
-                }
-
-                if (res.status === 'stopped' || res.status === 'finished') {
-                    clearInterval(backendPollInterval);
-                    backendPollInterval = null;
-                    autoRegisterRunning = false;
-                    document.getElementById('start-register-btn').disabled = false;
-                    document.getElementById('stop-register-btn').disabled = true;
-                    updateStatus(res.status === 'finished' ? 'Hoàn thành (Server)' : 'Đã dừng (Server)');
-                    if (typeof updateRegisteredSchedules === 'function') {
-                        updateRegisteredSchedules();
-                    }
-                    if (res.status === 'finished' && typeof playSuccessSound === 'function') {
-                        playSuccessSound();
-                    }
-                }
-            }
-        } catch (e) {
-            console.error('Lỗi khi lấy log từ máy chủ', e);
-        }
-    }, 1500);
-}
-
 async function stopAutoRegister() {
     stopAutoRegisterLocally('Đã dừng');
     addLog('register-log', '🛑 Đã nhận lệnh dừng từ người dùng', 'warning');
-    try {
-        await api.stopAutoRegister();
-    } catch (e) { }
 }
 
 function clearRegisterLog() {
@@ -3993,168 +3881,6 @@ function playSuccessSound() {
         }, 200);
     } catch (e) {
         console.log('Could not play sound');
-    }
-}
-
-// ==================== Events (Tab 8) ====================
-function getEventData() {
-    const eventId = document.getElementById('event-id-input').value.trim();
-    const dateId = document.getElementById('event-date-id-input').value.trim();
-    if (!eventId) {
-        showToast('Vui lòng nhập ID sự kiện', 'error');
-        return null;
-    }
-    return { eventId, dateId: dateId || null };
-}
-
-async function handleRegisterEvent() {
-    const data = getEventData();
-    if (!data) return;
-
-    const { eventId, dateId } = data;
-    const dateStr = dateId ? `/${dateId}` : '';
-
-    updateStatus(`Đang đăng ký sự kiện ${eventId}${dateStr}...`);
-    addLog('event-log', `Đang đăng ký sự kiện ID: ${eventId}${dateStr}...`, 'info');
-
-    const result = await api.registerEvent(eventId, dateId);
-
-    if (result.success) {
-        addLog('event-log', `✅ Sự kiện ${eventId}${dateStr}: ${result.message}`, 'success');
-        showToast(result.message, 'success');
-    } else {
-        addLog('event-log', `❌ Sự kiện ${eventId}${dateStr}: ${result.message}`, 'error');
-        showToast(result.message, 'error');
-    }
-    updateStatus('Sẵn sàng');
-}
-
-async function handleCancelEvent() {
-    const data = getEventData();
-    if (!data) return;
-
-    const { eventId } = data;
-
-    if (!confirm(`Bạn có chắc muốn hủy đăng ký sự kiện ID: ${eventId}?`)) return;
-
-    updateStatus(`Đang hủy đăng ký sự kiện ${eventId}...`);
-    addLog('event-log', `Đang hủy đăng ký sự kiện ID: ${eventId}...`, 'info');
-
-    const result = await api.cancelEvent(eventId);
-
-    if (result.success) {
-        addLog('event-log', `✅ Sự kiện ${eventId}: ${result.message}`, 'success');
-        showToast(result.message, 'success');
-    } else {
-        addLog('event-log', `❌ Sự kiện ${eventId}: ${result.message}`, 'error');
-        showToast(result.message, 'error');
-    }
-    updateStatus('Sẵn sàng');
-}
-
-function clearEventLog() {
-    document.getElementById('event-log').innerHTML = '';
-}
-
-// ==================== Auto Event (Background Backend) ====================
-let eventAutoRunning = false;
-let eventAutoTimeout = null;
-
-function toggleAutoEvent() {
-    if (eventAutoRunning) {
-        stopAutoEvent();
-    } else {
-        startAutoEvent();
-    }
-}
-
-async function stopAutoEvent() {
-    stopAutoEventLocally();
-    addLog('event-log', '🛑 Đã dừng Auto Sự kiện', 'warning');
-}
-
-function stopAutoEventLocally() {
-    eventAutoRunning = false;
-    if (eventAutoTimeout) {
-        clearInterval(eventAutoTimeout);
-        eventAutoTimeout = null;
-    }
-    const btn = document.getElementById('event-auto-btn');
-    if (btn) {
-        btn.innerHTML = '▶ Bắt đầu Auto';
-        btn.className = 'btn btn-primary';
-    }
-    updateStatus('Sẵn sàng');
-}
-
-async function startAutoEvent() {
-    const data = getEventData();
-    if (!data) return;
-
-    const retries = parseInt(document.getElementById('event-retry-input').value) || 100;
-    const delayMin = parseInt(document.getElementById('event-delay-min-input').value) || 50;
-    const delayMax = parseInt(document.getElementById('event-delay-max-input').value) || 100;
-    const timerInput = document.getElementById('event-timer-input').value;
-
-    let targetTimeStr = null;
-    if (timerInput) {
-        const now = new Date();
-        const [hours, minutes, seconds] = timerInput.split(':').map(Number);
-        const targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds || 0);
-
-        if (targetTime <= now) {
-            targetTime.setDate(targetTime.getDate() + 1); // Tomorrow
-        }
-        targetTimeStr = targetTime.toISOString();
-    }
-
-    const btn = document.getElementById('event-auto-btn');
-    if (btn) {
-        btn.innerHTML = '⏹ Dừng Auto ngầm';
-        btn.className = 'btn btn-danger';
-    }
-    eventAutoRunning = true;
-
-    if (targetTimeStr) {
-        addLog('event-log', `⏳ Đang đợi đến ${new Date(targetTimeStr).toLocaleTimeString('vi-VN')} để bắt đầu...`, 'info');
-        updateStatus('Đang chờ hẹn giờ...');
-        const waitTime = new Date(targetTimeStr).getTime() - Date.now();
-        eventAutoTimeout = setTimeout(() => runLocalEventLoop(data.eventId, data.dateId, retries, delayMin, delayMax), waitTime);
-    } else {
-        runLocalEventLoop(data.eventId, data.dateId, retries, delayMin, delayMax);
-    }
-}
-
-async function runLocalEventLoop(eventId, dateId, retries, delayMin, delayMax) {
-    updateStatus('Đang chạy auto...');
-    addLog('event-log', `🚀 Bắt đầu Auto Sự kiện: ID ${eventId} (${retries} lượt)`, 'info');
-
-    for (let i = 0; i < retries; i++) {
-        if (!eventAutoRunning) return;
-        addLog('event-log', `🔄 Lượt ${i + 1}/${retries}...`, 'info');
-
-        const result = await api.registerEvent(eventId, dateId);
-
-        if (result.success && !result.message.toLowerCase().includes('không thành công') && !result.message.toLowerCase().includes('lỗi')) {
-            addLog('event-log', `✅ THÀNH CÔNG: ${result.message}`, 'success');
-            showToast('Đăng ký sự kiện thành công!', 'success');
-            if (typeof playSuccessSound === 'function') playSuccessSound();
-            stopAutoEventLocally();
-            return;
-        } else {
-            addLog('event-log', `❌ Thất bại: ${result.message}`, 'error');
-        }
-
-        if (i < retries - 1 && eventAutoRunning) {
-            const currentDelay = Math.floor(Math.random() * (delayMax - delayMin + 1)) + delayMin;
-            addLog('event-log', `⏳ Đợi ${currentDelay}ms...`, 'warning');
-            await new Promise(resolve => setTimeout(resolve, currentDelay));
-        }
-    }
-
-    if (eventAutoRunning) {
-        addLog('event-log', '🛑 Đã hoàn thành tất cả lượt thử', 'warning');
-        stopAutoEventLocally();
     }
 }
 

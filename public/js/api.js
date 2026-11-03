@@ -118,7 +118,10 @@ class ApiClient {
 
     // ==================== Unified Request Method ====================
 
-    async request(method, endpoint, data = null, isRetry = false) {
+    async request(method, endpoint, data = null, isRetry = false, shouldContinue = null) {
+        if (shouldContinue && !shouldContinue()) {
+            return { success: false, isCancelled: true, message: 'Đã dừng yêu cầu' };
+        }
         // Obfuscate and route portal endpoints through /gateway
         const isPortalEndpoint = endpoint.startsWith('/dkhp') || endpoint.startsWith('/dkhpdk') || endpoint.startsWith('/eventWeb');
 
@@ -163,8 +166,8 @@ class ApiClient {
                 if (endpoint !== '/user/login') {
                     if (!isRetry) {
                         const relogged = await this.tryAutoRelogin();
-                        if (relogged) {
-                            return await this.request(method, endpoint, data, true);
+                        if (relogged && (!shouldContinue || shouldContinue())) {
+                            return await this.request(method, endpoint, data, true, shouldContinue);
                         }
                     }
                     // Keep the running registration and its saved credentials intact.
@@ -207,6 +210,9 @@ class ApiClient {
 
             const text = await response.text();
             if (!text) {
+                if (endpoint.startsWith('/eventWeb/')) {
+                    return { success: false, message: 'Portal chưa xác nhận kết quả (phản hồi trống)' };
+                }
                 if (response.ok) {
                     return { success: true, message: 'Thành công (Không có dữ liệu trả về)' };
                 } else {
@@ -326,37 +332,38 @@ class ApiClient {
 
     // ==================== Events ====================
 
-    async registerEvent(eventId, dateId = null) {
-        let url = `/eventWeb/register?eventId=${eventId}`;
-        let bodyData = null;
-        if (dateId) {
-            bodyData = { dateId: parseInt(dateId, 10) };
+    parsePositiveInteger(value, label, optional = false) {
+        const text = String(value ?? '').trim();
+        if (!text && optional) return null;
+        const number = Number(text);
+        if (!/^\d+$/.test(text) || !Number.isSafeInteger(number) || number <= 0) {
+            throw new Error(`${label} phải là số nguyên dương`);
         }
-        const result = await this.request('POST', url, bodyData);
-        const isSuccess = result.success !== false;
-        return { success: isSuccess, message: result.message || (isSuccess ? 'Đăng ký sự kiện thành công' : 'Đăng ký sự kiện thất bại') };
+        return number;
+    }
+
+    buildEventRegistration(eventId, dateId = null, objectId = null) {
+        const id = this.parsePositiveInteger(eventId, 'eventId');
+        const date = this.parsePositiveInteger(dateId, 'dateId', true);
+        const object = this.parsePositiveInteger(objectId, 'objectId', true);
+        const payload = {};
+        if (date !== null) payload.dateId = date;
+        if (object !== null) payload.objectId = object;
+        return { eventId: id, endpoint: `/eventWeb/register?eventId=${id}`, payload };
+    }
+
+    async registerEvent(eventId, dateId = null, objectId = null, shouldContinue = null) {
+        const { endpoint, payload } = this.buildEventRegistration(eventId, dateId, objectId);
+        const result = await this.request('POST', endpoint, payload, false, shouldContinue);
+        const isSuccess = result?.success === true;
+        return { ...result, success: isSuccess, message: result?.message || (isSuccess ? 'Đăng ký sự kiện thành công' : 'Portal chưa xác nhận đăng ký thành công') };
     }
 
     async cancelEvent(eventId) {
-        const result = await this.request('DELETE', `/eventWeb/cancel/${eventId}`);
-        const isSuccess = result.success !== false;
-        return { success: isSuccess, message: result.message || (isSuccess ? 'Hủy đăng ký sự kiện thành công' : 'Hủy đăng ký sự kiện thất bại') };
-    }
-
-    // ==================== Auto Event (Backend) ====================
-
-    async startAutoEventBackend(eventId, dateId, retries, delayMin, delayMax, targetTime) {
-        return await this.request('POST', '/events/auto/start', {
-            eventId, dateId, retries, delayMin, delayMax, targetTime
-        });
-    }
-
-    async stopAutoEventBackend() {
-        return await this.request('POST', '/events/auto/stop');
-    }
-
-    async getAutoEventStatus() {
-        return await this.request('GET', '/events/auto/status');
+        const id = this.parsePositiveInteger(eventId, 'eventId');
+        const result = await this.request('DELETE', `/eventWeb/cancel/${id}`);
+        const isSuccess = result?.success === true;
+        return { ...result, success: isSuccess, message: result?.message || (isSuccess ? 'Hủy đăng ký sự kiện thành công' : 'Portal chưa xác nhận hủy đăng ký thành công') };
     }
 
     // ==================== Courses ====================
@@ -456,22 +463,6 @@ class ApiClient {
         return { success: result.success !== false, message: result.message || 'Hủy thành công' };
     }
 
-    // ==================== Auto Registration (Server-Side) ====================
-
-    async startAutoRegister(classIds, type, loop, delay, delayMax, targetTime, credentials = null, courseGroups = []) {
-        const mssv = this.studentInfo ? this.studentInfo.maSinhVien : '';
-        return await this.request('POST', '/registration/auto/start', {
-            classIds, courseGroups, type, loop, delay, delayMax, targetTime, mssv, credentials
-        });
-    }
-
-    async getAutoRegisterStatus() {
-        return await this.request('GET', '/registration/auto/status');
-    }
-
-    async stopAutoRegister() {
-        return await this.request('POST', '/registration/auto/stop');
-    }
 }
 
 // Create global instance

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Tool ĐKHP - Đăng ký học phần tự động cho sinh viên ĐH GTVT TP.HCM">
     <title>Tool ĐKHP UTH - Đăng ký học phần tự động</title>
-    <link rel="stylesheet" href="/css/style.css?v=7.5">
+    <link rel="stylesheet" href="/css/style.css?v=7.7">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -442,7 +442,6 @@
                                     <select id="register-mode">
                                         <option value="browser" selected>⚡ Trực tiếp trình duyệt (Tự re-login, Khuyên
                                             dùng)</option>
-                                        <option value="server">🌐 Chạy ngầm trên máy chủ</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -485,10 +484,6 @@
                             <div class="log-header">
                                 <h3>📋 Log đăng ký</h3>
                                 <div style="display: flex; gap: 8px; align-items: center;">
-                                    <a href="/api/registration/view-logs" target="_blank" class="btn btn-sm btn-outline"
-                                        style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 4px 10px;"
-                                        title="Mở trang xem log chạy ngầm trên máy chủ Render">🌐 Nhật ký Server
-                                        ngầm</a>
                                     <button class="btn btn-sm btn-ghost" onclick="clearRegisterLog()">Xóa log</button>
                                 </div>
                             </div>
@@ -735,62 +730,98 @@
                             <h2>🎉 Đăng ký sự kiện</h2>
                         </div>
                         <div class="card">
-                            <h3>Đăng ký / Hủy sự kiện theo ID</h3>
-                            <div class="form-row">
+                            <h3>Cấu hình sự kiện</h3>
+                            <div class="event-form-grid">
                                 <div class="form-group">
-                                    <label>ID Sự kiện</label>
-                                    <input type="number" id="event-id-input" placeholder="Nhập ID sự kiện (VD: 42)"
-                                        min="1">
+                                    <label for="event-preset-select">Sự kiện</label>
+                                    <select id="event-preset-select">
+                                        <option value="student-festival-2026">Ngày hội sinh viên 2026</option>
+                                        <option value="other">Sự kiện khác — nhập ID thủ công</option>
+                                    </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>Ngày (ID)</label>
-                                    <input type="number" id="event-date-id-input" placeholder="ID ngày (số)" min="1">
+                                    <label for="event-id-input">eventId — ID sự kiện</label>
+                                    <input type="number" id="event-id-input" placeholder="Ví dụ: 114"
+                                        min="1" step="1" inputmode="numeric" aria-describedby="event-id-help">
+                                    <small id="event-id-help" class="event-help">Tự nhập ID từ Portal cho cả hai lựa chọn.</small>
+                                </div>
+                                <div id="event-manual-date-group" class="form-group" hidden>
+                                    <label for="event-date-id-input">dateId — ID ngày (tùy chọn)</label>
+                                    <input type="number" id="event-date-id-input" placeholder="Để trống nếu không yêu cầu"
+                                        min="1" step="1" inputmode="numeric">
                                 </div>
                                 <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <div class="btn-group">
-                                        <button class="btn btn-primary" onclick="handleRegisterEvent()">
-                                            ✅ Đăng ký sự kiện
-                                        </button>
-                                        <button class="btn btn-danger" onclick="handleCancelEvent()">
-                                            ❌ Hủy đăng ký
-                                        </button>
-                                    </div>
+                                    <label for="event-object-id-input">objectId — ID đối tượng <span id="event-object-optional" hidden>(tùy chọn)</span></label>
+                                    <input type="number" id="event-object-id-input" value="12" min="1" step="1"
+                                        inputmode="numeric" aria-describedby="event-object-help">
+                                    <small id="event-object-help" class="event-help">Mặc định 12: Sinh viên hệ đào tạo chính quy. Có thể sửa trực tiếp.</small>
                                 </div>
                             </div>
-                            <small style="color: var(--text-secondary);">Mở portal.ut.edu.vn → vào trang sự kiện → lấy
-                                số ID từ URL (VD: portal.ut.edu.vn/event/<b>42</b>)</small>
+                            <fieldset id="event-date-cards" class="event-date-fieldset">
+                                <legend>Chọn một ngày tham gia</legend>
+                                <div class="event-date-grid">
+                                    <label class="event-date-card">
+                                        <input type="radio" name="event-festival-date" value="183" checked>
+                                        <span><strong>16/11/2026</strong><small>dateId = 183</small></span>
+                                    </label>
+                                    <label class="event-date-card">
+                                        <input type="radio" name="event-festival-date" value="184">
+                                        <span><strong>17/11/2026</strong><small>dateId = 184</small></span>
+                                    </label>
+                                    <label class="event-date-card">
+                                        <input type="radio" name="event-festival-date" value="185">
+                                        <span><strong>18/11/2026</strong><small>dateId = 185</small></span>
+                                    </label>
+                                </div>
+                            </fieldset>
+                            <div class="event-preview">
+                                <h4>Xem trước yêu cầu đăng ký</h4>
+                                <code id="event-endpoint-preview">POST https://portal.ut.edu.vn/api/v1/eventWeb/register?eventId=&lt;nhập eventId&gt;</code>
+                                <pre id="event-payload-preview">Chưa có payload hợp lệ.</pre>
+                                <p id="event-validation" class="event-help" aria-live="polite"></p>
+                            </div>
+                            <div class="btn-group event-actions">
+                                <button id="event-register-btn" class="btn btn-primary" onclick="handleRegisterEvent()">
+                                    ✅ Đăng ký một lần
+                                </button>
+                                <button id="event-cancel-btn" class="btn btn-danger" onclick="handleCancelEvent()">
+                                    ❌ Hủy đăng ký
+                                </button>
+                            </div>
+                            <p class="event-help">Bản nháp tự lưu theo tài khoản trong tab này; tải lại trang không tự bắt đầu đăng ký.</p>
                         </div>
 
                         <div class="card">
-                            <h3>Tự động đăng ký & Hẹn giờ</h3>
-                            <div class="form-row">
+                            <h3>Tự động đăng ký & Hẹn giờ trong tab</h3>
+                            <p class="event-browser-note">Giữ tab và trình duyệt hoạt động, máy không ngủ. Cloudflare hiện chỉ chuyển tiếp API;
+                                tiến trình này chạy trong trình duyệt. Thay đổi form áp dụng cho lần Bắt đầu tiếp theo.</p>
+                            <div class="event-form-grid event-auto-grid">
                                 <div class="form-group">
-                                    <label>Hẹn giờ chạy (không bắt buộc)</label>
+                                    <label for="event-timer-input">Hẹn giờ chạy (tùy chọn)</label>
                                     <input type="time" id="event-timer-input" step="1"
                                         title="Để trống nếu muốn chạy ngay lập tức">
                                 </div>
                                 <div class="form-group">
-                                    <label>Số lượt thử</label>
-                                    <input type="number" id="event-retry-input" value="10" min="1">
+                                    <label for="event-retry-input">Số lượt thử tối đa</label>
+                                    <input type="number" id="event-retry-input" value="10" min="1" step="1" inputmode="numeric">
                                 </div>
                                 <div class="form-group">
-                                    <label>Delay Min (ms)</label>
-                                    <input type="number" id="event-delay-min-input" value="50" min="1">
+                                    <label for="event-delay-min-input">Delay Min (ms)</label>
+                                    <input type="number" id="event-delay-min-input" value="100" min="1" step="1" inputmode="numeric">
                                 </div>
                                 <div class="form-group">
-                                    <label>Delay Max (ms)</label>
-                                    <input type="number" id="event-delay-max-input" value="100" min="1">
-                                </div>
-                                <div class="form-group">
-                                    <label>&nbsp;</label>
-                                    <div class="btn-group">
-                                        <button id="event-auto-btn" class="btn btn-primary" onclick="toggleAutoEvent()">
-                                            ▶ Bắt đầu Auto
-                                        </button>
-                                    </div>
+                                    <label for="event-delay-max-input">Delay Max (ms)</label>
+                                    <input type="number" id="event-delay-max-input" value="150" min="1" step="1" inputmode="numeric">
                                 </div>
                             </div>
+                            <p class="event-help">Chờ request hoàn tất rồi nghỉ ngẫu nhiên Min–Max mili giây trước lượt tiếp theo.
+                                Backoff khi lỗi kết nối/Portal là thời gian chờ riêng. Giờ đã qua sẽ hẹn vào ngày mai (giờ trên máy).</p>
+                            <div class="btn-group event-actions">
+                                <button id="event-auto-btn" class="btn btn-primary" onclick="startAutoEvent()">▶ Bắt đầu tự động</button>
+                                <button id="event-stop-btn" class="btn btn-danger" onclick="stopAutoEvent()" disabled>⏹ Dừng</button>
+                            </div>
+                            <p id="event-run-status" role="status">Sẵn sàng</p>
+                            <p id="event-run-config" class="event-help"></p>
                         </div>
 
                         <div class="card">
@@ -1464,8 +1495,9 @@
                 </div>
 
     <div id="toast-container" class="toast-container"></div>
-    <script src="/js/api.js?v=7.6"></script>
-    <script src="/js/app.js?v=7.6"></script>
+    <script src="/js/api.js?v=7.7"></script>
+    <script src="/js/app.js?v=7.7"></script>
+    <script src="/js/events.js?v=7.7"></script>
 </body>
 
 </html>
