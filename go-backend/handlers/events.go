@@ -29,15 +29,12 @@ func PostAutoEventStart(c *gin.Context) {
 		return
 	}
 
-	sessionID := token[:min(16, len(token))]
-
-	// Kiểm tra session đang chạy
-	if existing, ok := services.AutoEventSessions.Load(sessionID); ok {
-		sess := existing.(*models.AutoEventSession)
-		sess.Mu.Lock()
-		status := sess.Status
-		sess.Mu.Unlock()
-		if status == "running" || status == "waiting" {
+	sessionID := services.TokenSessionID(token)
+	if previous := findEventSession(token); previous != nil {
+		previous.Mu.Lock()
+		active := previous.Active
+		previous.Mu.Unlock()
+		if active {
 			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Đang có tiến trình auto sự kiện chạy ngầm"})
 			return
 		}
@@ -55,6 +52,7 @@ func PostAutoEventStart(c *gin.Context) {
 	}
 
 	session := &models.AutoEventSession{
+		Token:   token,
 		Active:  true,
 		Logs:    []models.LogEntry{},
 		AllLogs: []models.LogEntry{},
@@ -66,12 +64,31 @@ func PostAutoEventStart(c *gin.Context) {
 		session.Status = "running"
 	}
 
-	services.AutoEventSessions.Store(sessionID, session)
+	session.RunContext()
+	// Atomically reserve this token's slot so duplicate Start requests cannot launch two workers.
+	for {
+		existing, loaded := services.AutoEventSessions.LoadOrStore(sessionID, session)
+		if !loaded {
+			break
+		}
+		previous := existing.(*models.AutoEventSession)
+		previous.Mu.Lock()
+		active := previous.Active
+		previous.Mu.Unlock()
+		if active {
+			session.Finish("stopped", nil)
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Đang có tiến trình auto sự kiện chạy ngầm"})
+			return
+		}
+		if services.AutoEventSessions.CompareAndSwap(sessionID, previous, session) {
+			break
+		}
+	}
 
 	if reqBody.TargetTime != "" {
-		services.ScheduleAutoEvent(token, reqBody.EventID, reqBody.DateID, reqBody.Retries, reqBody.DelayMin, reqBody.DelayMax, reqBody.TargetTime, session)
+		services.ScheduleAutoEvent(token, reqBody, session)
 	} else {
-		services.RunAutoEvent(token, reqBody.EventID, reqBody.DateID, reqBody.Retries, reqBody.DelayMin, reqBody.DelayMax, session)
+		services.RunAutoEvent(token, reqBody, session)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Đã bắt đầu tiến trình auto sự kiện ngầm"})
@@ -86,16 +103,8 @@ func PostAutoEventStop(c *gin.Context) {
 		return
 	}
 
-	sessionID := token[:min(16, len(token))]
-	if val, ok := services.AutoEventSessions.Load(sessionID); ok {
-		sess := val.(*models.AutoEventSession)
-		sess.Mu.Lock()
-		sess.Active = false
-		sess.Status = "stopped"
-		if sess.CancelFunc != nil {
-			sess.CancelFunc()
-		}
-		sess.Mu.Unlock()
+	if sess := findEventSession(token); sess != nil {
+		sess.Finish("stopped", nil)
 		sess.AddLog("🛑 Đã nhận lệnh dừng từ người dùng", "warning")
 	}
 
@@ -111,9 +120,8 @@ func GetAutoEventStatus(c *gin.Context) {
 		return
 	}
 
-	sessionID := token[:min(16, len(token))]
-	val, ok := services.AutoEventSessions.Load(sessionID)
-	if !ok {
+	session := findEventSession(token)
+	if session == nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"status":  "idle",
@@ -122,7 +130,6 @@ func GetAutoEventStatus(c *gin.Context) {
 		return
 	}
 
-	session := val.(*models.AutoEventSession)
 	logs := session.DrainLogs()
 
 	session.Mu.Lock()
@@ -251,14 +258,25 @@ func PostEventViewLogsStop(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if val, ok := services.AutoEventSessions.Load(sessionID); ok {
 		sess := val.(*models.AutoEventSession)
-		sess.Mu.Lock()
-		sess.Active = false
-		sess.Status = "stopped"
-		if sess.CancelFunc != nil {
-			sess.CancelFunc()
-		}
-		sess.Mu.Unlock()
+		sess.Finish("stopped", nil)
 		sess.AddLog("🛑 Đã nhận lệnh dừng từ trang View Logs", "warning")
 	}
 	c.Redirect(http.StatusFound, "/api/events/view-logs")
+}
+
+// Both the starting token and the refreshed token can still find/stop the same worker.
+func findEventSession(token string) *models.AutoEventSession {
+	var found *models.AutoEventSession
+	services.AutoEventSessions.Range(func(_, value interface{}) bool {
+		session := value.(*models.AutoEventSession)
+		session.Mu.Lock()
+		matches := session.Token == token || session.OwnerToken == token
+		active := session.Active
+		session.Mu.Unlock()
+		if matches && (found == nil || active) {
+			found = session
+		}
+		return !matches || !active
+	})
+	return found
 }

@@ -5,7 +5,7 @@
 // - Goroutines thay vì Single-Thread Event Loop
 // - Connection Pooling tối ưu với net/http
 // - sync.Map cho trạng thái in-memory thread-safe
-// - Multi-port mode chạy 10 server song song trong cùng process
+// - Một HTTP server trên PORT (mặc định 3000)
 package main
 
 import (
@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -30,24 +29,15 @@ import (
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 
-	// Kiểm tra biến môi trường PORT (deploy mode)
-	portEnv := os.Getenv("PORT")
-
-	if portEnv != "" {
-		// ===== Single port mode (VPS/Docker/Cloud) =====
-		port, err := strconv.Atoi(portEnv)
-		if err != nil {
-			log.Fatalf("PORT không hợp lệ: %s", portEnv)
+	port := config.DefaultPort
+	if portEnv := strings.TrimSpace(os.Getenv("PORT")); portEnv != "" {
+		configured, err := strconv.Atoi(portEnv)
+		if err != nil || configured < 1 || configured > 65535 {
+			log.Fatalf("PORT không hợp lệ: %s (cần số từ 1 đến 65535)", portEnv)
 		}
-		runSingleServer(port)
-	} else {
-		// ===== Multi-port mode (Offline / .exe) =====
-		fmt.Println("==================================================")
-		fmt.Println("🚀 Khởi động ĐKHP Tool - Multi-Port (3000-3009)...")
-		fmt.Println("==================================================")
-		fmt.Printf("Đang mở %d luồng server độc lập, vui lòng chờ...\n\n", config.MultiPortCount)
-		runMultiPortServers()
+		port = configured
 	}
+	runSingleServer(port)
 }
 
 // setupRouter cấu hình Gin router với tất cả các route
@@ -213,52 +203,8 @@ func runSingleServer(port int) {
 		}
 	}()
 
-	log.Printf("✅ [Luồng %d] Sẵn sàng tại: http://localhost:%d", port, port)
+	log.Printf("✅ ĐKHP Tool - một cổng: http://localhost:%d", port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("❌ Lỗi khởi động server port %d: %v", port, err)
 	}
-}
-
-// runMultiPortServers chạy 10 server song song trên các port 3000-3009
-func runMultiPortServers() {
-	var wg sync.WaitGroup
-	servers := make([]*http.Server, config.MultiPortCount)
-
-	for i := 0; i < config.MultiPortCount; i++ {
-		port := config.DefaultPort + i
-		router := setupRouter()
-		addr := fmt.Sprintf("0.0.0.0:%d", port)
-
-		srv := &http.Server{
-			Addr:    addr,
-			Handler: router,
-		}
-		servers[i] = srv
-
-		wg.Add(1)
-		go func(p int, s *http.Server) {
-			defer wg.Done()
-			log.Printf("✅ [Luồng %d] Sẵn sàng tại: http://localhost:%d", p, p)
-			if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Printf("❌ Lỗi ở port %d: %v", p, err)
-			}
-		}(port, srv)
-	}
-
-	// Graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("\n🛑 Đang đóng tất cả các server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	for _, srv := range servers {
-		if err := srv.Shutdown(ctx); err != nil {
-			log.Printf("⚠️ Lỗi shutdown: %v", err)
-		}
-	}
-	wg.Wait()
-	log.Println("✅ Đã đóng tất cả thành công.")
 }

@@ -16,9 +16,6 @@ const (
 	// DefaultPort là port mặc định khi không có biến môi trường PORT
 	DefaultPort = 3000
 
-	// MultiPortCount là số lượng port mở khi chạy Multi-Port mode
-	MultiPortCount = 10
-
 	// UserAgent giả lập trình duyệt Chrome cho các request proxy
 	UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )

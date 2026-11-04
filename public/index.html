@@ -815,7 +815,8 @@
                                 </div>
                             </div>
                             <p class="event-help">Chờ request hoàn tất rồi nghỉ ngẫu nhiên Min–Max mili giây trước lượt tiếp theo.
-                                Backoff khi lỗi kết nối/Portal là thời gian chờ riêng. Giờ đã qua sẽ hẹn vào ngày mai (giờ trên máy).</p>
+                                Lỗi timeout/500/429 không trừ lượt: hệ thống chờ rồi tự thử lại. Khi hết phiên, tự đăng nhập lại nếu đã bật Ghi nhớ.
+                                Giờ đã qua sẽ hẹn vào ngày mai (giờ trên máy).</p>
                             <div class="btn-group event-actions">
                                 <button id="event-auto-btn" class="btn btn-primary" onclick="startAutoEvent()">▶ Bắt đầu tự động</button>
                                 <button id="event-stop-btn" class="btn btn-danger" onclick="stopAutoEvent()" disabled>⏹ Dừng</button>
@@ -1495,9 +1496,9 @@
                 </div>
 
     <div id="toast-container" class="toast-container"></div>
-    <script src="/js/api.js?v=7.7"></script>
-    <script src="/js/app.js?v=7.7"></script>
-    <script src="/js/events.js?v=7.7"></script>
+    <script src="/js/api.js?v=7.8"></script>
+    <script src="/js/app.js?v=7.8"></script>
+    <script src="/js/events.js?v=7.8"></script>
 </body>
 
 </html>

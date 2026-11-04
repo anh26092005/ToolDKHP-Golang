@@ -248,7 +248,7 @@ function startAutoEvent() {
     saveEventFormState();
     const run = {
         data: Object.freeze({ ...data, payload: Object.freeze({ ...data.payload }) }),
-        ...settings, attempts: 0, timeout: null, cancelWait: null
+        ...settings, attempts: 0, requests: 0, timeout: null, cancelWait: null
     };
     eventAutoRun = run;
     document.getElementById('event-run-config').textContent =
@@ -294,7 +294,7 @@ function finishEventRun(run, status) {
 function stopAutoEvent() {
     const run = eventAutoRun;
     if (!run) return;
-    finishEventRun(run, `Đã dừng (${run.attempts}/${run.retries} lượt đã gửi)${eventRequestInFlight ? ' — chờ phản hồi request hiện tại' : ''}`);
+    finishEventRun(run, `Đã dừng (${run.attempts}/${run.retries} lượt nghiệp vụ; ${run.requests} request)${eventRequestInFlight ? ' — chờ phản hồi request hiện tại' : ''}`);
     addEventLog('🛑 Đã dừng tự động; đã hủy lịch chờ và không gửi thêm lượt của lần chạy này.', 'warning');
 }
 
@@ -310,13 +310,24 @@ async function runLocalEventLoop(run) {
     let consecutiveErrors = 0;
     while (isCurrentEventRun(run) && run.attempts < run.retries) {
         const result = await sendEventRequest(() => {
-            run.attempts++;
-            setEventStatus(`Đang gửi lượt ${run.attempts}/${run.retries}...`);
-            addEventLog(`🔄 Lượt ${run.attempts}/${run.retries}`);
+            run.requests++;
+            setEventStatus(`Đang gửi lượt ${run.attempts + 1}/${run.retries} — request ${run.requests} (tối đa 20 giây/yêu cầu)...`);
+            addEventLog(`🔄 Lượt ${run.attempts + 1}/${run.retries} — request ${run.requests}`);
             return api.registerEvent(run.data.eventId, run.data.payload.dateId, run.data.payload.objectId,
-                () => isCurrentEventRun(run));
+                () => isCurrentEventRun(run), message => {
+                    if (!isCurrentEventRun(run)) return;
+                    setEventStatus(message);
+                    addEventLog(message, 'warning');
+                });
         }, run);
         if (!isCurrentEventRun(run)) return;
+        if (result.isAuthenticationFailed || (result.isUnauthorized && !api.getCredentials())) {
+            addEventLog(`❌ ${result.message} Cần đăng nhập lại để tiếp tục.`, 'error');
+            finishEventRun(run, 'Cần đăng nhập lại — kiểm tra tài khoản/mật khẩu và bật Ghi nhớ');
+            return;
+        }
+        const transient = result.isUnauthorized || result.isServerError || result.isNetworkError || result.isRateLimit || result.statusCode >= 500;
+        if (!transient) run.attempts++;
         if (result.success === true) {
             addEventLog(`✅ THÀNH CÔNG: ${result.message}`, 'success');
             finishEventRun(run, `Đăng ký thành công sau ${run.attempts}/${run.retries} lượt`);
@@ -326,12 +337,12 @@ async function runLocalEventLoop(run) {
         }
         addEventLog(`❌ Lượt ${run.attempts}: ${result.message}`, 'error');
         if (run.attempts >= run.retries) break;
-        const transient = result.isUnauthorized || result.isServerError || result.isNetworkError || result.isRateLimit || result.statusCode >= 500;
         if (transient) {
             consecutiveErrors++;
-            const backoff = result.isUnauthorized ? 5000 : Math.min(2000 + consecutiveErrors * 500, 5000);
-            addEventLog(`⚠️ Backoff lỗi Portal/phiên/kết nối: ${backoff} ms (riêng với delay thông thường).`, 'warning');
-            setEventStatus(`Đang backoff ${backoff} ms — ${run.attempts}/${run.retries} lượt`);
+            const baseBackoff = result.isUnauthorized ? 5000 : Math.min(2000 + consecutiveErrors * 500, 5000);
+            const backoff = Math.max(baseBackoff + Math.floor(Math.random() * 501), result.retryAfterMs || 0);
+            addEventLog(`⚠️ Backoff lỗi Portal/phiên/kết nối: ${backoff} ms. Giữ nguyên lượt thử; sẽ tự tiếp tục khi Portal hồi phục.`, 'warning');
+            setEventStatus(`Portal/phiên chưa sẵn sàng — thử lại sau ${backoff} ms (${run.attempts}/${run.retries} lượt nghiệp vụ)`);
             if (!await waitForEventRun(run, backoff)) return;
         } else {
             consecutiveErrors = 0;

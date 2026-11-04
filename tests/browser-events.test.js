@@ -460,3 +460,158 @@ test('event logs/toasts redact secrets and escape Portal HTML; drafts contain no
     const draft = h.session.getItem('dkhp_event_form_state:student-A');
     assert.ok(!/token|password|credentials/.test(draft));
 });
+
+test('event auto keeps its single retry through a simulated 30-minute Portal outage', async () => {
+    const outageEnd = new Date(2026, 10, 3, 8, 30, 0).getTime();
+    const h = browser({ reply: () => h.clock.now < outageEnd
+        ? new Response('<html>Unavailable</html>', { status: 503 }) : { success: true, message: 'Recovered' } });
+    h.value('event-id-input', 114);
+    h.value('event-retry-input', 1);
+    const running = h.context.startAutoEvent();
+    await flush();
+    await h.advance(30 * 60 * 1000 + 10000);
+    await running;
+    assert.ok(h.requests.length > 300);
+    assert.match(h.nodes.get('event-run-status').textContent, /thành công.*1\/1/);
+    assert.equal(h.clock.timers.size, 0);
+});
+
+test('event recovery retries login until Portal recovers, then resumes the original event payload', async () => {
+    const actions = [];
+    let logins = 0;
+    const h = browser({ fetch: async (url, options) => {
+        if (url === '/api/user/login') {
+            actions.push('login');
+            logins++;
+            if (logins === 1) throw new Error('dial tcp: i/o timeout');
+            if (logins === 2) return new Response('{}', { status: 504 });
+            return new Response('{"success":true,"token":"fresh-token"}');
+        }
+        const payload = JSON.parse(Buffer.from(JSON.parse(options.body).p, 'base64').toString());
+        actions.push(payload);
+        return new Response(payload.token === 'fresh-token' ? '{"success":true}' : '{}',
+            { status: payload.token === 'fresh-token' ? 200 : 401 });
+    } });
+    h.context.client.saveCredentials('student-A', 'test-password');
+    h.value('event-id-input', 114);
+    h.value('event-retry-input', 1);
+    h.date(184);
+    const running = h.context.startAutoEvent();
+    await flush();
+    await h.advance(15000);
+    await running;
+    assert.equal(logins, 3);
+    assert.equal(actions.length, 5);
+    assert.deepEqual(actions.slice(1, 4), ['login', 'login', 'login']);
+    assert.deepEqual(actions.at(-1).data, { dateId: 184, objectId: 12 });
+    assert.equal(actions.at(-1).token, 'fresh-token');
+    assert.match(h.nodes.get('event-run-status').textContent, /thành công.*1\/1/);
+    assert.ok(h.logs.some(log => log.message.includes('Đang đăng nhập lại')));
+});
+
+test('event auth stops with a useful status for missing credentials or a rejected password', async () => {
+    for (const remember of [false, true]) {
+        let loginCalls = 0;
+        const h = browser({ fetch: async url => {
+            if (url === '/api/user/login') loginCalls++;
+            return new Response('{"success":false}', { status: 401 });
+        } });
+        if (remember) h.context.client.saveCredentials('student-A', 'wrong-password');
+        h.value('event-id-input', 114);
+        await h.context.startAutoEvent();
+        assert.equal(loginCalls, remember ? 1 : 0);
+        assert.match(h.nodes.get('event-run-status').textContent, /Cần đăng nhập lại/);
+        assert.equal(h.nodes.get('event-auto-btn').disabled, false);
+        assert.equal(h.clock.timers.size, 0);
+    }
+});
+
+test('a delayed login refresh displays recovery status; Stop cancels the following backoff', async () => {
+    const login = deferred();
+    const h = browser({ fetch: async url => url === '/api/user/login'
+        ? login.promise : new Response('{}', { status: 401 }) });
+    h.context.client.saveCredentials('student-A', 'test-password');
+    h.value('event-id-input', 114);
+    const running = h.context.startAutoEvent();
+    await flush();
+    assert.match(h.nodes.get('event-run-status').textContent, /Đang đăng nhập lại.*20 giây/);
+    login.resolve(new Response('{}', { status: 503 }));
+    await flush();
+    assert.match(h.nodes.get('event-run-status').textContent, /thử lại sau/);
+    h.context.stopAutoEvent();
+    await running;
+    assert.equal(h.clock.timers.size, 0);
+});
+
+test('Portal rate limits respect Retry-After without spending the event retry budget', async () => {
+    const h = browser({ reply: (_, count) => count === 1
+        ? new Response('{}', { status: 429, headers: { 'Retry-After': '10' } }) : { success: true } });
+    h.value('event-id-input', 114);
+    h.value('event-retry-input', 1);
+    const running = h.context.startAutoEvent();
+    await flush();
+    assert.equal(h.clock.history.at(-1).ms, 10000);
+    await h.advance(10100);
+    await running;
+    assert.equal(h.requests.length, 2);
+    assert.match(h.nodes.get('event-run-status').textContent, /thành công.*1\/1/);
+});
+
+test('a late 401 from the old token reuses the refreshed token without another login', async () => {
+    const late = deferred();
+    let logins = 0;
+    const h = browser({ fetch: async (url, options) => {
+        if (url === '/api/user/login') {
+            logins++;
+            return new Response('{"success":true,"token":"fresh"}');
+        }
+        const payload = JSON.parse(Buffer.from(JSON.parse(options.body).p, 'base64').toString());
+        if (payload.token === 'fresh') return new Response('{"success":true}');
+        if (payload.endpoint.endsWith('eventId=2')) return late.promise;
+        return new Response('{}', { status: 401 });
+    } });
+    h.context.client.saveCredentials('student-A', 'test-password');
+    const second = h.context.client.registerEvent(2);
+    assert.equal((await h.context.client.registerEvent(1)).success, true);
+    late.resolve(new Response('{}', { status: 401 }));
+    assert.equal((await second).success, true);
+    assert.equal(logins, 1);
+});
+
+test('simultaneous expired requests share one login refresh', async () => {
+    const login = deferred();
+    let logins = 0;
+    const h = browser({ fetch: async (url, options) => {
+        if (url === '/api/user/login') {
+            logins++;
+            return login.promise;
+        }
+        const payload = JSON.parse(Buffer.from(JSON.parse(options.body).p, 'base64').toString());
+        return new Response(payload.token === 'fresh' ? '{"success":true}' : '{}',
+            { status: payload.token === 'fresh' ? 200 : 401 });
+    } });
+    h.context.client.saveCredentials('student-A', 'test-password');
+    const pending = Array.from({ length: 60 }, (_, i) => h.context.client.registerEvent(i + 1));
+    await flush();
+    assert.equal(logins, 1);
+    login.resolve(new Response('{"success":true,"token":"fresh"}'));
+    const results = await Promise.all(pending);
+    assert.equal(results.filter(result => result.success).length, 60);
+    assert.equal(logins, 1);
+});
+
+test('an expired-token JSON response with HTTP 200 also refreshes the session', async () => {
+    let logins = 0;
+    const h = browser({ fetch: async (url, options) => {
+        if (url === '/api/user/login') {
+            logins++;
+            return new Response('{"success":true,"token":"fresh"}');
+        }
+        const payload = JSON.parse(Buffer.from(JSON.parse(options.body).p, 'base64').toString());
+        return new Response(JSON.stringify(payload.token === 'fresh'
+            ? { success: true } : { success: false, message: 'Token đã hết hạn' }));
+    } });
+    h.context.client.saveCredentials('student-A', 'test-password');
+    assert.equal((await h.context.client.registerEvent(114, 184, 12)).success, true);
+    assert.equal(logins, 1);
+});

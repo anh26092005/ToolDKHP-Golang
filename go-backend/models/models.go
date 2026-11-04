@@ -2,6 +2,7 @@
 package models
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -53,16 +54,16 @@ type GatewayResponse struct {
 
 // AutoRegisterRequest là payload bắt đầu đăng ký tự động
 type AutoRegisterRequest struct {
-	ClassIDs     []interface{}  `json:"classIds"`
-	CourseGroups []CourseGroup  `json:"courseGroups,omitempty"`
-	Type         string         `json:"type"`
-	Loop         int            `json:"loop"`
-	Delay        int            `json:"delay"`
-	DelayMax     int            `json:"delayMax"`
-	TargetTime   string         `json:"targetTime,omitempty"`
-	MSSV         string         `json:"mssv,omitempty"`
-	Credentials  *Credentials   `json:"credentials,omitempty"`
-	ProxyURL     string         `json:"proxyUrl,omitempty"` // HTTP/SOCKS5 proxy cho tài khoản này
+	ClassIDs     []interface{} `json:"classIds"`
+	CourseGroups []CourseGroup `json:"courseGroups,omitempty"`
+	Type         string        `json:"type"`
+	Loop         int           `json:"loop"`
+	Delay        int           `json:"delay"`
+	DelayMax     int           `json:"delayMax"`
+	TargetTime   string        `json:"targetTime,omitempty"`
+	MSSV         string        `json:"mssv,omitempty"`
+	Credentials  *Credentials  `json:"credentials,omitempty"`
+	ProxyURL     string        `json:"proxyUrl,omitempty"` // HTTP/SOCKS5 proxy cho tài khoản này
 }
 
 // CourseGroup nhóm các lớp cùng một môn học
@@ -87,26 +88,28 @@ type LogEntry struct {
 
 // AutoRegisterSession là trạng thái của một phiên đăng ký tự động
 type AutoRegisterSession struct {
-	Mu                sync.Mutex    `json:"-"`
-	SessionID         string        `json:"sessionId"`
-	Token             string        `json:"token"`
-	Credentials       *Credentials  `json:"credentials,omitempty"`
-	MSSV              string        `json:"mssv"`
-	Active            bool          `json:"active"`
-	Type              string        `json:"type"`
-	Loop              int           `json:"loop"`
-	Delay             int           `json:"delay"`
-	DelayMax          int           `json:"delayMax"`
-	ClassIDs          []string      `json:"classIds"`
-	CourseGroups      []CourseGroup `json:"courseGroups"`
-	PendingClassIDs   []string      `json:"pendingClassIds"`
-	SuccessfulClassIDs []string     `json:"successfulClassIds"`
-	Logs              []LogEntry    `json:"logs"`
-	AllLogs           []LogEntry    `json:"allLogs"`
-	Status            string        `json:"status"` // waiting, running, finished, stopped
-	Result            interface{}   `json:"result"`
-	CancelFunc        func()        `json:"-"`
-	ProxyURL          string        `json:"proxyUrl,omitempty"`
+	Mu                 sync.Mutex      `json:"-"`
+	SessionID          string          `json:"sessionId"`
+	Token              string          `json:"token"`
+	OwnerToken         string          `json:"-"`
+	Context            context.Context `json:"-"`
+	Credentials        *Credentials    `json:"credentials,omitempty"`
+	MSSV               string          `json:"mssv"`
+	Active             bool            `json:"active"`
+	Type               string          `json:"type"`
+	Loop               int             `json:"loop"`
+	Delay              int             `json:"delay"`
+	DelayMax           int             `json:"delayMax"`
+	ClassIDs           []string        `json:"classIds"`
+	CourseGroups       []CourseGroup   `json:"courseGroups"`
+	PendingClassIDs    []string        `json:"pendingClassIds"`
+	SuccessfulClassIDs []string        `json:"successfulClassIds"`
+	Logs               []LogEntry      `json:"logs"`
+	AllLogs            []LogEntry      `json:"allLogs"`
+	Status             string          `json:"status"` // waiting, running, finished, stopped
+	Result             interface{}     `json:"result"`
+	CancelFunc         func()          `json:"-"`
+	ProxyURL           string          `json:"proxyUrl,omitempty"`
 }
 
 // AddLog thêm một dòng log vào session (thread-safe)
@@ -118,8 +121,8 @@ func (s *AutoRegisterSession) AddLog(message, logType string) {
 		Message: message,
 		Type:    logType,
 	}
-	s.Logs = append(s.Logs, entry)
-	s.AllLogs = append(s.AllLogs, entry)
+	s.Logs = appendSessionLog(s.Logs, entry)
+	s.AllLogs = appendSessionLog(s.AllLogs, entry)
 }
 
 // DrainLogs lấy và xóa các log chưa đọc (thread-safe)
@@ -136,23 +139,28 @@ func (s *AutoRegisterSession) DrainLogs() []LogEntry {
 
 // AutoEventRequest là payload bắt đầu auto sự kiện
 type AutoEventRequest struct {
-	EventID    interface{} `json:"eventId"`
-	DateID     interface{} `json:"dateId,omitempty"`
-	Retries    int         `json:"retries"`
-	DelayMin   int         `json:"delayMin"`
-	DelayMax   int         `json:"delayMax"`
-	TargetTime string      `json:"targetTime,omitempty"`
+	EventID     int64        `json:"eventId" binding:"required,gt=0"`
+	DateID      *int64       `json:"dateId,omitempty" binding:"omitempty,gt=0"`
+	ObjectID    *int64       `json:"objectId,omitempty" binding:"omitempty,gt=0"`
+	Retries     int          `json:"retries"`
+	DelayMin    int          `json:"delayMin"`
+	DelayMax    int          `json:"delayMax"`
+	TargetTime  string       `json:"targetTime,omitempty"`
+	Credentials *Credentials `json:"credentials,omitempty"`
 }
 
 // AutoEventSession là trạng thái của phiên auto sự kiện
 type AutoEventSession struct {
-	Mu         sync.Mutex `json:"-"`
-	Active     bool       `json:"active"`
-	Logs       []LogEntry `json:"logs"`
-	AllLogs    []LogEntry `json:"allLogs"`
-	Status     string     `json:"status"`
-	Result     interface{} `json:"result"`
-	CancelFunc func()     `json:"-"`
+	Mu         sync.Mutex      `json:"-"`
+	Token      string          `json:"-"`
+	OwnerToken string          `json:"-"`
+	Context    context.Context `json:"-"`
+	Active     bool            `json:"active"`
+	Logs       []LogEntry      `json:"logs"`
+	AllLogs    []LogEntry      `json:"allLogs"`
+	Status     string          `json:"status"`
+	Result     interface{}     `json:"result"`
+	CancelFunc func()          `json:"-"`
 }
 
 // AddLog thêm log vào event session (thread-safe)
@@ -164,8 +172,8 @@ func (s *AutoEventSession) AddLog(message, logType string) {
 		Message: message,
 		Type:    logType,
 	}
-	s.Logs = append(s.Logs, entry)
-	s.AllLogs = append(s.AllLogs, entry)
+	s.Logs = appendSessionLog(s.Logs, entry)
+	s.AllLogs = appendSessionLog(s.AllLogs, entry)
 }
 
 // DrainLogs lấy và xóa log chưa đọc (thread-safe)

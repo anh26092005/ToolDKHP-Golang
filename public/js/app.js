@@ -546,6 +546,10 @@ async function runLocalRegisterLoop(initialClassIds, type, loop, delay, delayMax
                     stopAutoRegisterLocally('Hoàn thành');
                     return;
                 }
+            } else if (result.isAuthenticationFailed) {
+                addLog('register-log', `❌ ${escapeHtml(result.message)} Vui lòng kiểm tra và đăng nhập lại.`, 'error');
+                stopAutoRegisterLocally('Cần đăng nhập lại');
+                return;
             } else if (result.isUnauthorized || (result.message && (result.message.toLowerCase().includes('hết hạn') || result.message.toLowerCase().includes('token')))) {
                 // Xử lý khi cổng trường ngắt phiên / 401 Unauthorized
                 addLog('register-log', `⚠️ Phiên làm việc hết hạn hoặc bị ngắt! Đang tự động đăng nhập lại...`, 'warning');
@@ -1869,6 +1873,7 @@ function addStep2ModalLog(message, type = 'info') {
 
     logItem.innerHTML = `<span style="color:#64748b;">[${time}]</span> <span style="color:${color};">${message}</span>`;
     box.appendChild(logItem);
+    while (box.children.length > 1000) box.firstElementChild.remove();
     box.scrollTop = box.scrollHeight;
 }
 
@@ -1935,8 +1940,8 @@ async function runStep2LiveAutoRegister() {
                 }
 
                 if (result && (result.isUnauthorized || result.isServerError || result.isNetworkError || result.isRateLimit || result.statusCode >= 500)) {
-                    if (result.isUnauthorized && !api.getCredentials()) {
-                        addStep2ModalLog('❌ Phiên hết hạn và không có thông tin đăng nhập đã lưu. Hãy đăng nhập lại và chọn ghi nhớ.', 'error');
+                    if (result.isAuthenticationFailed || (result.isUnauthorized && !api.getCredentials())) {
+                        addStep2ModalLog('❌ Cần đăng nhập lại: kiểm tra tài khoản/mật khẩu và bật Ghi nhớ.', 'error');
                         _step2AutoRegisterRunning = false;
                         break;
                     }
@@ -3823,6 +3828,7 @@ function addLog(containerId, message, type = 'info') {
         <span class="log-message">${message}</span>
     `;
     container.appendChild(logEntry);
+    while (container.children.length > 1000) container.firstElementChild.remove();
     container.scrollTop = container.scrollHeight;
 }
 

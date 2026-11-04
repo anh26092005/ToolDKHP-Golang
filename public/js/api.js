@@ -13,6 +13,10 @@ class ApiClient {
         this.token = localStorage.getItem('dkhp_token') || null;
         this.studentInfo = JSON.parse(localStorage.getItem('dkhp_student') || 'null');
         this._reloginPromise = null;
+        this._reloginError = null;
+        this._needsRelogin = false;
+        // The Go upstream attempt is bounded at 15s; allow it time to return its timeout response.
+        this.requestTimeoutMs = 20000;
 
         // Auto register state
         this.autoRegisterRunning = false;
@@ -47,13 +51,17 @@ class ApiClient {
         localStorage.removeItem('dkhp_credentials');
     }
 
-    async tryAutoRelogin() {
+    async tryAutoRelogin(shouldContinue = null, onProgress = null) {
+        if (shouldContinue && !shouldContinue()) return false;
+        if (onProgress) onProgress('Đang đăng nhập lại — mỗi yêu cầu tối đa 20 giây...');
         if (this._reloginPromise) {
             return await this._reloginPromise;
         }
 
         const creds = this.getCredentials();
         if (!creds || !creds.username || !creds.password) {
+            this._reloginError = { success: false, isUnauthorized: true, isAuthenticationFailed: true,
+                message: 'Không có thông tin đăng nhập đã lưu. Vui lòng đăng nhập và bật Ghi nhớ.' };
             return false;
         }
 
@@ -63,21 +71,19 @@ class ApiClient {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    signal: AbortSignal.timeout(15000),
+                    signal: AbortSignal.timeout(this.requestTimeoutMs),
                     body: JSON.stringify({
                         username: creds.username,
                         password: creds.password
                     })
                 });
 
-                if (!response.ok) {
-                    console.error('[AutoReLogin] Phản hồi lỗi HTTP:', response.status);
-                    return false;
-                }
-
-                const data = await response.json();
-                if (data && data.success && data.token) {
+                let data;
+                try { data = await response.json(); } catch (_) { /* HTML/empty replies during an outage are temporary. */ }
+                if (response.ok && data?.success === true && typeof data.token === 'string' && data.token) {
                     this.token = data.token;
+                    this._needsRelogin = false;
+                    this._reloginError = null;
                     localStorage.setItem('dkhp_token', this.token);
                     if (data.studentInfo) {
                         this.studentInfo = data.studentInfo;
@@ -86,10 +92,16 @@ class ApiClient {
                     console.log('[AutoReLogin] ✅ Tự động đăng nhập lại thành công! Đã cấp token mới.');
                     return true;
                 }
-                console.warn('[AutoReLogin] Đăng nhập lại không thành công:', data?.message);
+                const rejected = [400, 401, 403].includes(response.status) || (response.ok && data?.success === false &&
+                    /(?:sai|không (?:chính xác|đúng|hợp lệ)|incorrect|invalid|wrong).*(?:mật khẩu|password|tài khoản)|(?:mật khẩu|password|tài khoản).*(?:sai|không (?:chính xác|đúng|hợp lệ)|incorrect|invalid|wrong)/i.test(data.message || ''));
+                this._reloginError = { success: false, isUnauthorized: true, statusCode: response.status,
+                    isAuthenticationFailed: rejected, isServerError: !rejected,
+                    message: rejected ? 'Portal từ chối tài khoản/mật khẩu. Vui lòng kiểm tra và đăng nhập lại.'
+                        : 'Portal chưa đăng nhập lại được. Tiến trình sẽ chờ và thử lại.' };
                 return false;
             } catch (err) {
-                console.error('[AutoReLogin] Lỗi ngoại lệ khi tự động đăng nhập:', err);
+                this._reloginError = { success: false, isUnauthorized: true, isNetworkError: true,
+                    message: 'Đăng nhập lại bị timeout/lỗi kết nối. Tiến trình sẽ thử lại khi Portal hồi phục.' };
                 return false;
             } finally {
                 this._reloginPromise = null;
@@ -118,16 +130,42 @@ class ApiClient {
 
     // ==================== Unified Request Method ====================
 
-    async request(method, endpoint, data = null, isRetry = false, shouldContinue = null) {
+    isExpiredSession(result) {
+        if (!result || result.success === true) return false;
+        return result.isUnauthorized === true || /unauthorized|hết phiên|phiên làm việc hết hạn|token.*(?:hết hạn|expired|invalid)/i.test(result.message || '');
+    }
+
+    async recoverUnauthorized(method, endpoint, data, isRetry, shouldContinue, onProgress, sentToken = null) {
+        // Another request may already have refreshed this old token while its 401 was in flight.
+        if (!isRetry && sentToken && this.token && sentToken !== this.token) {
+            return this.request(method, endpoint, data, true, shouldContinue, onProgress);
+        }
+        this._needsRelogin = true;
+        if (!isRetry && await this.tryAutoRelogin(shouldContinue, onProgress)) {
+            if (shouldContinue && !shouldContinue()) return { success: false, isCancelled: true, message: 'Đã dừng yêu cầu' };
+            if (onProgress) onProgress('Đã đăng nhập lại; đang gửi lại yêu cầu với token mới...');
+            return this.request(method, endpoint, data, true, shouldContinue, onProgress);
+        }
+        return { success: false, isUnauthorized: true, statusCode: 401,
+            message: 'Phiên đã hết hạn; đang chờ đăng nhập lại.', ...this._reloginError };
+    }
+
+    async request(method, endpoint, data = null, isRetry = false, shouldContinue = null, onProgress = null) {
         if (shouldContinue && !shouldContinue()) {
             return { success: false, isCancelled: true, message: 'Đã dừng yêu cầu' };
         }
         // Obfuscate and route portal endpoints through /gateway
         const isPortalEndpoint = endpoint.startsWith('/dkhp') || endpoint.startsWith('/dkhpdk') || endpoint.startsWith('/eventWeb');
 
+        // After a failed refresh, retry login first instead of repeatedly sending a known-expired token.
+        if (this._needsRelogin && !isRetry && endpoint !== '/user/login') {
+            return this.recoverUnauthorized(method, endpoint, data, false, shouldContinue, onProgress);
+        }
+
         let targetUrl = `${this.baseUrl}${endpoint}`;
         let requestMethod = method;
         let requestBody = null;
+        const sentToken = this.token;
 
         const headers = { 'Content-Type': 'application/json' };
         if (this.token) {
@@ -152,7 +190,7 @@ class ApiClient {
             method: requestMethod,
             headers,
             credentials: 'include',
-            signal: AbortSignal.timeout(15000)
+            signal: AbortSignal.timeout(this.requestTimeoutMs)
         };
         if (requestBody) {
             options.body = requestBody;
@@ -164,14 +202,8 @@ class ApiClient {
             // Handle 401 (Unauthorized)
             if (response.status === 401) {
                 if (endpoint !== '/user/login') {
-                    if (!isRetry) {
-                        const relogged = await this.tryAutoRelogin();
-                        if (relogged && (!shouldContinue || shouldContinue())) {
-                            return await this.request(method, endpoint, data, true, shouldContinue);
-                        }
-                    }
-                    // Keep the running registration and its saved credentials intact.
-                    // The caller can retry login while the Portal is unavailable.
+                    if (response.body) await response.body.cancel();
+                    return this.recoverUnauthorized(method, endpoint, data, isRetry, shouldContinue, onProgress, sentToken);
                 }
                 let msg = 'Tài khoản hoặc mật khẩu không chính xác';
                 try {
@@ -184,11 +216,15 @@ class ApiClient {
 
             // Handle 429 (Rate Limit)
             if (response.status === 429) {
-                return { success: false, message: 'Gửi quá nhanh ', isRateLimit: true, statusCode: 429 };
+                if (response.body) await response.body.cancel();
+                const retryAfter = response.headers.get('Retry-After');
+                const retryAfterMs = /^\d+$/.test(retryAfter || '') ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now();
+                return { success: false, message: 'Portal đang giới hạn tần suất gửi', isRateLimit: true, statusCode: 429,
+                    retryAfterMs: Number.isFinite(retryAfterMs) ? Math.min(Math.max(retryAfterMs, 0), 300000) : 0 };
             }
 
             // Handle 500, 502, 503, 504 (Server quá tải hoặc lỗi cổng trường)
-            if (response.status >= 500) {
+            if (response.status >= 500 || response.status === 408) {
                 let errorMsg = `Cổng trường quá tải/phản hồi lỗi (${response.status})`;
                 try {
                     const errorText = await response.text();
@@ -221,17 +257,21 @@ class ApiClient {
             }
 
             try {
-                const result = JSON.parse(text);
+                let result = JSON.parse(text);
                 // If response is encapsulated in obfuscated gateway response { r: "..." }
                 if (result && typeof result.r === 'string') {
-                    return this._decodePayload(result.r);
+                    result = this._decodePayload(result.r);
                 }
+                if (endpoint !== '/user/login' && this.isExpiredSession(result)) {
+                    return this.recoverUnauthorized(method, endpoint, data, isRetry, shouldContinue, onProgress, sentToken);
+                }
+                if (!response.ok) return { ...result, success: false, statusCode: response.status };
                 return result;
             } catch (err) {
                 return {
                     success: false,
                     message: `Lỗi dữ liệu từ server (Status ${response.status})`,
-                    isServerError: response.status >= 500
+                    isServerError: true
                 };
             }
         } catch (error) {
@@ -249,6 +289,8 @@ class ApiClient {
         // Lưu credentials nếu bật remember
         if (remember) {
             this.saveCredentials(username, password);
+        } else {
+            this.clearCredentials();
         }
 
         // Login to Portal (via Proxy)
@@ -256,7 +298,16 @@ class ApiClient {
 
         if (loginResult.success && loginResult.token) {
             this.token = loginResult.token;
+            this._needsRelogin = false;
+            this._reloginError = null;
             localStorage.setItem('dkhp_token', this.token);
+
+            // Go returns a usable identity with the token; avoid waiting on an optional profile during peak load.
+            if (loginResult.studentInfo) {
+                this.studentInfo = loginResult.studentInfo;
+                localStorage.setItem('dkhp_student', JSON.stringify(this.studentInfo));
+                return { success: true, message: 'Đăng nhập thành công', studentInfo: this.studentInfo };
+            }
 
             // Get profile
             const profileResult = await this.request('GET', '/user/getSummaryProfile');
@@ -277,6 +328,8 @@ class ApiClient {
     async loginWithToken(token) {
         // Đăng nhập trực tiếp bằng token Bearer
         this.token = token;
+        this._needsRelogin = false;
+        this._reloginError = null;
         localStorage.setItem('dkhp_token', token);
 
         const profileResult = await this.request('GET', '/user/getSummaryProfile');
@@ -307,6 +360,8 @@ class ApiClient {
     clearSession() {
         this.token = null;
         this.studentInfo = null;
+        this._needsRelogin = false;
+        this._reloginError = null;
         localStorage.removeItem('dkhp_token');
         localStorage.removeItem('dkhp_student');
         window.location.href = '/';
@@ -352,9 +407,9 @@ class ApiClient {
         return { eventId: id, endpoint: `/eventWeb/register?eventId=${id}`, payload };
     }
 
-    async registerEvent(eventId, dateId = null, objectId = null, shouldContinue = null) {
+    async registerEvent(eventId, dateId = null, objectId = null, shouldContinue = null, onProgress = null) {
         const { endpoint, payload } = this.buildEventRegistration(eventId, dateId, objectId);
-        const result = await this.request('POST', endpoint, payload, false, shouldContinue);
+        const result = await this.request('POST', endpoint, payload, false, shouldContinue, onProgress);
         const isSuccess = result?.success === true;
         return { ...result, success: isSuccess, message: result?.message || (isSuccess ? 'Đăng ký sự kiện thành công' : 'Portal chưa xác nhận đăng ký thành công') };
     }

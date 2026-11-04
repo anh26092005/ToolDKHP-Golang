@@ -3,6 +3,7 @@
 package services
 
 import (
+	"context"
 	"dkhp-backend/config"
 	"fmt"
 	"log"
@@ -14,9 +15,13 @@ import (
 // Trả về offset = serverTime - localTime (đơn vị: time.Duration)
 // Nếu không lấy được thời gian từ server, trả về 0.
 func SyncTimeOffset(client *http.Client) time.Duration {
+	return SyncTimeOffsetContext(context.Background(), client)
+}
+
+func SyncTimeOffsetContext(ctx context.Context, client *http.Client) time.Duration {
 	start := time.Now()
 
-	req, err := http.NewRequest("GET", "https://portal.ut.edu.vn", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://portal.ut.edu.vn", nil)
 	if err != nil {
 		log.Println("[TimeSync] Không thể tạo request:", err)
 		return 0

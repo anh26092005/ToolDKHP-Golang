@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Version](https://img.shields.io/badge/Version-6.5_Pro-blue.svg?style=for-the-badge)
-![Node](https://img.shields.io/badge/Node.js-16%2B-green.svg?style=for-the-badge&logo=node.js)
+![Go](https://img.shields.io/badge/Go-1.21%2B-green.svg?style=for-the-badge&logo=go)
 ![Theme](https://img.shields.io/badge/Design-Modern_Clean-blue.svg?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Ultra_Fast_Sniper-brightgreen.svg?style=for-the-badge)
 
@@ -29,7 +29,7 @@
 - 🎯 **Tự Động Dispatching & Loại Bỏ Môn Đã ĐK:** Tự động điều hướng API phù hợp (môn chính quy vs. môn điều kiện) và gạt bỏ môn đã thành công ra khỏi vòng lặp để dồn toàn lực đăng ký các môn còn lại.
 - 🕶️ **Đăng Ký Mã Lớp Bị Ẩn (Hidden Classes Enrollment):** Hỗ trợ tra cứu và đăng ký trực tiếp bằng ID lớp 6 số cho các lớp học phần bị ẩn trên giao diện Portal sinh viên.
 - 📅 **Xem Trước Thời Khóa Biểu Tuần:** Trực quan hóa toàn bộ các lớp đã chọn lên ma trận thời khóa biểu tuần, tự động phát hiện và cảnh báo xung đột lịch học.
-- 🌐 **Cụm Cổng Đa Luồng (Multi-Port Clustering):** Tự động mở rộng dải cổng từ `3000` đến `3009` khi cần chạy nhiều tiến trình cùng lúc.
+- 🌐 **Một cổng, nhiều phiên:** Backend Go phục vụ request đồng thời trên một cổng, mặc định `3000`; có thể đổi bằng biến môi trường `PORT`.
 
 ---
 
@@ -79,23 +79,17 @@
 ## 🚀 HƯỚNG DẪN CÀI ĐẶT & KHỞI CHẠY (SETUP & RUN)
 
 ### 1. Yêu cầu hệ thống
-- **Node.js:** Phiên bản 16.x trở lên ([Tải tại đây](https://nodejs.org/)).
+- **Go:** Phiên bản 1.21 trở lên khi chạy hoặc build từ mã nguồn. Bản `.exe` đã build không cần cài Go.
 - Trình duyệt web hiện đại (Chrome, Edge, Brave, Firefox, Cốc Cốc...).
 
-### 2. Cài đặt các thư viện
-Mở Terminal hoặc PowerShell tại thư mục dự án và chạy lệnh:
-```bash
-npm install
-```
+### 2. Build bản Windows
+Chạy `build-go.bat` để tạo `dkhp-tool-golang.exe` từ mã nguồn hiện tại.
 
 ### 3. Khởi chạy ứng dụng
-Chế độ phát triển (Development / Hot-Reload):
-```bash
-npm run dev
-```
-Hoặc chế độ tiêu chuẩn:
-```bash
-npm start
+Chạy `run-go.bat`, hoặc chạy trực tiếp từ mã nguồn:
+```powershell
+cd go-backend
+go run main.go
 ```
 
 ### 4. Truy cập hệ thống
@@ -103,7 +97,14 @@ Mở trình duyệt và truy cập vào đường dẫn:
 ```
 http://localhost:3000
 ```
-*(Nếu cổng 3000 bị chiếm, server sẽ tự động chuyển sang 3001, 3002...)*
+Server chỉ mở **một cổng**. Đặt `PORT` trước khi chạy nếu cần dùng cổng khác.
+
+### 5. Triển khai Cloudflare
+Worker được cấu hình tại `wrangler.toml`, entrypoint `cloudflare-entry.js`:
+```powershell
+wrangler deploy
+```
+Cloudflare phục vụ giao diện và gateway JavaScript; tiến trình tự động chạy trong tab người dùng. Chi tiết backend Go và cơ chế phục hồi: [HUONG_DAN_GOLANG.md](./HUONG_DAN_GOLANG.md).
 
 ---
 
@@ -154,26 +155,20 @@ Trang quản trị key được quản lý trong dự án key riêng, không n�
 
 ```
 web-dkhp/
-├── server.js                          # Express Server & Multi-Port Clustering
-├── package.json                       # Cấu hình dự án & Dependencies
-├── README.md                          # Tài liệu tổng quan dự án
-├── HUONG_DAN_SU_DUNG.md               # Tài liệu hướng dẫn sử dụng cho sinh viên
-├── PIPELINE_HUONG_DAN_CHI_TIET_A_Z.md # Tài liệu kiến trúc & Pipeline chuyên sâu
-├── routes/
-│   ├── auth.js                        # API Đăng nhập, kiểm tra phiên, HWID & Admin
-│   ├── courses.js                     # API Lấy danh sách môn học chính & điều kiện
-│   ├── classes.js                     # API Lấy danh sách lớp học phần & chi tiết
-│   └── registration.js                # API Đăng ký, hủy môn, check TKB
-└── public/
-    ├── index.html                     # Giao diện chính người dùng (UI + Modal Guide)
-    ├── css/
-    │   ├── style.css                  # Toàn bộ CSS giao diện ứng dụng
-    ├── js/
-    │   ├── api.js                     # Module kết nối HTTP API & Client Storage
-    │   ├── app.js                     # Toàn bộ Logic giao diện, Wizard, Sniper
-    └── images/
-        ├── huong_dan_chi_tiet_a_z.jpg # Infographic hướng dẫn sử dụng 6 bước
-        └── pipeline_guide.jpg         # Banner sơ đồ pipeline kiến trúc
+├── go-backend/                       # Backend Go: HTTP server một cổng, handlers và workers
+├── public/                           # Giao diện HTML/CSS/JS dùng chung
+│   └── js/
+│       ├── api.js                    # API client, token và tự đăng nhập lại
+│       ├── app.js                    # Chọn lớp, lịch học và tự đăng ký học phần
+│       └── events.js                 # Vòng lặp đăng ký sự kiện trong tab
+├── functions/api/[[path]].js          # Cloudflare gateway tới Portal
+├── cloudflare-entry.js               # Cloudflare Worker entrypoint
+├── wrangler.toml                     # Worker và static assets
+├── api/index.js                      # API adapter cho Vercel
+├── tests/                            # Kiểm thử browser logic và gateway với Portal giả lập
+├── build-go.bat                      # Biên dịch bản Windows
+├── run-go.bat                        # Chạy bản Go trên một cổng
+└── HUONG_DAN_GOLANG.md                # Hướng dẫn Go và xử lý timeout
 ```
 
 ---

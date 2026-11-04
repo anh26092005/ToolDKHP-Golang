@@ -3,9 +3,8 @@
 package handlers
 
 import (
-	"bytes"
 	"dkhp-backend/config"
-	"encoding/json"
+	"dkhp-backend/models"
 	"io"
 	"log"
 	"net/http"
@@ -32,73 +31,37 @@ func PostLogin(c *gin.Context) {
 
 	log.Printf("[Auth] Đang gửi đăng nhập cho MSSV: %s", body.Username)
 
-	// Forward login request to Portal
-	loginPayload, _ := json.Marshal(map[string]string{
-		"username": body.Username,
-		"password": body.Password,
-	})
-
-	req, err := http.NewRequest("POST", config.PortalBaseURL+"/user/login", bytes.NewReader(loginPayload))
+	resp, err := services.RequestPortal(c.Request.Context(), services.DefaultClient, http.MethodPost, "/user/login",
+		&models.Credentials{Username: body.Username, Password: body.Password}, "")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Lỗi hệ thống"})
+		sendPortalConnectionError(c, err, false)
 		return
 	}
-	setPortalHeaders(req, "")
-
-	resp, err := services.DefaultClient.Do(req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Lỗi kết nối đến server: " + err.Error(),
-		})
-		return
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		c.JSON(resp.StatusCode, gin.H{"success": false, "message": "Phản hồi không hợp lệ từ Portal"})
-		return
-	}
-
-	success, _ := result["success"].(bool)
-	if !success {
-		statusCode := resp.StatusCode
-		if statusCode == 200 {
-			statusCode = http.StatusOK
+	if resp.Temporary() {
+		status := resp.StatusCode
+		if status < 400 {
+			status = http.StatusBadGateway
 		}
-		c.JSON(statusCode, result)
+		c.JSON(status, gin.H{"success": false, "isServerError": true, "statusCode": status,
+			"message": "Portal đang quá tải hoặc chưa trả phản hồi hợp lệ. Hãy thử lại sau ít giây."})
+		return
+	}
+	if !resp.Success() {
+		c.JSON(resp.StatusCode, resp.Data)
+		return
+	}
+	token, _ := resp.Data["token"].(string)
+	if token == "" {
+		c.JSON(http.StatusBadGateway, gin.H{"success": false, "isServerError": true, "message": "Portal chưa cấp token. Vui lòng thử lại."})
 		return
 	}
 
-	token, _ := result["token"].(string)
-
-	// Lấy thông tin sinh viên
-	var studentInfo interface{}
-	profileReq, _ := http.NewRequest("GET", config.PortalBaseURL+"/user/getSummaryProfile", nil)
-	setPortalHeaders(profileReq, token)
-	profileResp, err := services.DefaultClient.Do(profileReq)
-	if err == nil {
-		defer profileResp.Body.Close()
-		profileBody, _ := io.ReadAll(profileResp.Body)
-		var profileResult map[string]interface{}
-		if json.Unmarshal(profileBody, &profileResult) == nil {
-			if profileResult["success"] == true {
-				studentInfo = profileResult["body"]
-			}
-		}
-	}
-	if studentInfo == nil {
-		studentInfo = map[string]string{"maSinhVien": body.Username}
-	}
-
+	// Return the token immediately. A slow optional profile request must not lose a successful login.
 	c.JSON(http.StatusOK, gin.H{
 		"success":     true,
 		"message":     "Đăng nhập thành công",
 		"token":       token,
-		"studentInfo": studentInfo,
+		"studentInfo": gin.H{"maSinhVien": body.Username},
 	})
 }
 
@@ -111,12 +74,12 @@ func GetSummaryProfile(c *gin.Context) {
 		return
 	}
 
-	req, _ := http.NewRequest("GET", config.PortalBaseURL+"/user/getSummaryProfile", nil)
+	req, _ := http.NewRequestWithContext(c.Request.Context(), "GET", config.PortalBaseURL+"/user/getSummaryProfile", nil)
 	setPortalHeaders(req, token)
 
 	resp, err := services.DefaultClient.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Lỗi kết nối"})
+		sendPortalConnectionError(c, err, false)
 		return
 	}
 	defer resp.Body.Close()
@@ -143,7 +106,7 @@ func GetValidate(c *gin.Context) {
 		return
 	}
 
-	req, _ := http.NewRequest("GET", config.PortalBaseURL+"/dkhp/getHocPhanHocMoi?idDot=0", nil)
+	req, _ := http.NewRequestWithContext(c.Request.Context(), "GET", config.PortalBaseURL+"/dkhp/getHocPhanHocMoi?idDot=0", nil)
 	setPortalHeaders(req, token)
 
 	resp, err := services.DefaultClient.Do(req)

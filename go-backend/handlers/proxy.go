@@ -54,7 +54,7 @@ func ProxyHandler(c *gin.Context) {
 		}
 	}
 
-	req, err := http.NewRequest(method, targetURL, bodyReader)
+	req, err := http.NewRequestWithContext(c.Request.Context(), method, targetURL, bodyReader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Lỗi tạo request"})
 		return
@@ -68,12 +68,19 @@ func ProxyHandler(c *gin.Context) {
 
 	resp, err := services.DefaultClient.Do(req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Lỗi kết nối đến Portal"})
+		sendPortalConnectionError(c, err, false)
 		return
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		sendPortalConnectionError(c, err, false)
+		return
+	}
+	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+		c.Header("Retry-After", retryAfter)
+	}
 	c.Data(resp.StatusCode, "application/json; charset=utf-8", respBody)
 }
 
@@ -140,7 +147,7 @@ func GatewayHandler(c *gin.Context) {
 		bodyReader = bytes.NewReader(dataBytes)
 	}
 
-	req, err := http.NewRequest(method, targetURL, bodyReader)
+	req, err := http.NewRequestWithContext(c.Request.Context(), method, targetURL, bodyReader)
 	if err != nil {
 		sendGatewayError(c, http.StatusInternalServerError, "Lỗi tạo request")
 		return
@@ -154,12 +161,19 @@ func GatewayHandler(c *gin.Context) {
 
 	resp, err := services.DefaultClient.Do(req)
 	if err != nil {
-		sendGatewayError(c, http.StatusInternalServerError, "Lỗi kết nối đến Portal")
+		sendPortalConnectionError(c, err, true)
 		return
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		sendPortalConnectionError(c, err, true)
+		return
+	}
+	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+		c.Header("Retry-After", retryAfter)
+	}
 
 	// Encode response as base64
 	encoded := base64.StdEncoding.EncodeToString(respBody)

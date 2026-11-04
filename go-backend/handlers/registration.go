@@ -87,7 +87,7 @@ func PostAutoStart(c *gin.Context) {
 	// Tạo sessionID dựa trên MSSV hoặc token
 	sessionID := reqBody.MSSV
 	if sessionID == "" {
-		sessionID = token[:min(16, len(token))]
+		sessionID = services.TokenSessionID(token)
 	}
 
 	// Kiểm tra session đang chạy
@@ -148,7 +148,25 @@ func PostAutoStart(c *gin.Context) {
 		session.Status = "running"
 	}
 
-	services.AutoRegisterSessions.Store(sessionID, session)
+	session.RunContext()
+	for {
+		existing, loaded := services.AutoRegisterSessions.LoadOrStore(sessionID, session)
+		if !loaded {
+			break
+		}
+		previous := existing.(*models.AutoRegisterSession)
+		previous.Mu.Lock()
+		active := previous.Active
+		previous.Mu.Unlock()
+		if active {
+			session.Finish("stopped", nil)
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Đang có tiến trình đăng ký chạy"})
+			return
+		}
+		if services.AutoRegisterSessions.CompareAndSwap(sessionID, previous, session) {
+			break
+		}
+	}
 
 	if reqBody.TargetTime != "" {
 		services.ScheduleAutoRegistration(session, reqBody.TargetTime)
@@ -176,9 +194,9 @@ func GetAutoStatus(c *gin.Context) {
 	services.AutoRegisterSessions.Range(func(key, value interface{}) bool {
 		sess := value.(*models.AutoRegisterSession)
 		sess.Mu.Lock()
-		sessToken := sess.Token
+		matches := sess.Token == token || sess.OwnerToken == token
 		sess.Mu.Unlock()
-		if sessToken == token {
+		if matches {
 			session = sess
 			return false
 		}
@@ -220,7 +238,7 @@ func PostAutoStop(c *gin.Context) {
 	services.AutoRegisterSessions.Range(func(key, value interface{}) bool {
 		sess := value.(*models.AutoRegisterSession)
 		sess.Mu.Lock()
-		if sess.Token == token && (sess.Status == "running" || sess.Status == "waiting") {
+		if (sess.Token == token || sess.OwnerToken == token) && sess.Active {
 			session = sess
 			sess.Mu.Unlock()
 			return false
@@ -230,13 +248,7 @@ func PostAutoStop(c *gin.Context) {
 	})
 
 	if session != nil {
-		session.Mu.Lock()
-		session.Active = false
-		session.Status = "stopped"
-		if session.CancelFunc != nil {
-			session.CancelFunc()
-		}
-		session.Mu.Unlock()
+		session.Finish("stopped", nil)
 		session.AddLog("🛑 Đã nhận lệnh dừng từ người dùng", "warning")
 	}
 
@@ -448,13 +460,7 @@ func PostViewLogsStop(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if val, ok := services.AutoRegisterSessions.Load(sessionID); ok {
 		sess := val.(*models.AutoRegisterSession)
-		sess.Mu.Lock()
-		sess.Active = false
-		sess.Status = "stopped"
-		if sess.CancelFunc != nil {
-			sess.CancelFunc()
-		}
-		sess.Mu.Unlock()
+		sess.Finish("stopped", nil)
 		sess.AddLog("🛑 Đã nhận lệnh dừng từ trang View Logs", "warning")
 	}
 	c.Redirect(http.StatusFound, "/api/registration/view-logs")
@@ -490,4 +496,3 @@ func proxyRegistration(c *gin.Context, baseURL string) {
 	respBody, _ := io.ReadAll(resp.Body)
 	c.Data(resp.StatusCode, "application/json; charset=utf-8", respBody)
 }
-

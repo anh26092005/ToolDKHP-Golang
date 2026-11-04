@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/net/proxy"
@@ -37,10 +39,12 @@ func NewHTTPClient() *http.Client {
 			InsecureSkipVerify: false,
 		},
 	}
+	configureHTTP2(transport)
 
 	return &http.Client{
-		Transport: transport,
-		Timeout:   config.RequestTimeout,
+		Transport:     transport,
+		Timeout:       config.RequestTimeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 }
 
@@ -56,12 +60,12 @@ func NewHTTPClientWithProxy(proxyURL string) (*http.Client, error) {
 	}
 
 	transport := &http.Transport{
-		ForceAttemptHTTP2:   true,
-		MaxIdleConns:        500,
-		MaxIdleConnsPerHost: 100,
-		MaxConnsPerHost:     200,
-		IdleConnTimeout:     120 * time.Second,
-		TLSHandshakeTimeout: 5 * time.Second,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          500,
+		MaxIdleConnsPerHost:   100,
+		MaxConnsPerHost:       200,
+		IdleConnTimeout:       120 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
 		ResponseHeaderTimeout: config.RequestTimeout,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: false,
@@ -79,12 +83,11 @@ func NewHTTPClientWithProxy(proxyURL string) (*http.Client, error) {
 				Password: password,
 			}
 		}
-		dialer, err := proxy.SOCKS5("tcp", parsed.Host, auth, proxy.Direct)
+		dialer, err := proxy.SOCKS5("tcp", parsed.Host, auth, &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second})
 		if err != nil {
 			return nil, err
 		}
-		transport.DialContext = nil
-		transport.Dial = dialer.Dial //nolint:staticcheck
+		transport.DialContext = dialer.(proxy.ContextDialer).DialContext
 	default:
 		// HTTP/HTTPS proxy
 		transport.Proxy = http.ProxyURL(parsed)
@@ -93,12 +96,23 @@ func NewHTTPClientWithProxy(proxyURL string) (*http.Client, error) {
 			KeepAlive: 30 * time.Second,
 		}).DialContext
 	}
+	configureHTTP2(transport)
 
 	return &http.Client{
-		Transport: transport,
-		Timeout:   config.RequestTimeout,
+		Transport:     transport,
+		Timeout:       config.RequestTimeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}, nil
 }
 
 // DefaultClient là HTTP Client dùng chung trong toàn ứng dụng (singleton)
 var DefaultClient = NewHTTPClient()
+
+// Optional diagnostic fallback for a Portal/proxy with broken HTTP/2 support.
+// TCP timeouts still need retry/backoff, regardless of the negotiated HTTP version.
+func configureHTTP2(transport *http.Transport) {
+	if strings.EqualFold(os.Getenv("PORTAL_DISABLE_HTTP2"), "true") || os.Getenv("PORTAL_DISABLE_HTTP2") == "1" {
+		transport.ForceAttemptHTTP2 = false
+		transport.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{}
+	}
+}
