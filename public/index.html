@@ -265,89 +265,96 @@
                         <!-- Step 2: Classes Detail & Selection Hub -->
                         <div id="step2-view" class="step-view">
                             <!-- Step 2 Loading Overlay -->
-                            <div id="step2-loading-overlay" style="display:none; position:absolute; inset:0; z-index:50; background:rgba(255,255,255,0.85); backdrop-filter:blur(4px); flex-direction:column; align-items:center; justify-content:center; gap:16px; border-radius:12px;">
-                                <div style="width:44px;height:44px;border:4px solid #e0e7ff;border-top-color:#4f46e5;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-                                <p style="font-size:14px;font-weight:600;color:#4f46e5;margin:0;">Đang tải danh sách lớp học phần...</p>
+                            <div id="step2-loading-overlay"
+                                style="display:none; position:absolute; inset:0; z-index:50; background:rgba(255,255,255,0.85); backdrop-filter:blur(4px); flex-direction:column; align-items:center; justify-content:center; gap:16px; border-radius:12px;">
+                                <div
+                                    style="width:44px;height:44px;border:4px solid #e0e7ff;border-top-color:#4f46e5;border-radius:50%;animation:spin 0.8s linear infinite;">
+                                </div>
+                                <p style="font-size:14px;font-weight:600;color:#4f46e5;margin:0;">Đang tải danh sách lớp
+                                    học phần...</p>
                             </div>
 
                             <!-- Step 2 actual content -->
                             <div id="step2-content-wrapper">
-                            <!-- Guide Notification Banner -->
-                            <div class="guide-banner-card">
-                                <div class="guide-bulb-icon">💡</div>
-                                <div class="guide-banner-text">
-                                    <strong>Hướng dẫn:</strong> Hệ thống đã tự động lọc ra các mã lớp học phần tương ứng
-                                    với các môn bạn đã chọn ở Bước 1. Vui lòng bấm chọn một mã lớp thích hợp cho mỗi
-                                    môn, kiểm tra trạng thái xung đột thời khóa biểu và bấm <strong>Tự động đăng
-                                        ký</strong> ở cuối màn hình.
+                                <!-- Guide Notification Banner -->
+                                <div class="guide-banner-card">
+                                    <div class="guide-bulb-icon">💡</div>
+                                    <div class="guide-banner-text">
+                                        <strong>Hướng dẫn:</strong> Hệ thống đã tự động lọc ra các mã lớp học phần tương
+                                        ứng
+                                        với các môn bạn đã chọn ở Bước 1. Vui lòng bấm chọn một mã lớp thích hợp cho mỗi
+                                        môn, kiểm tra trạng thái xung đột thời khóa biểu và bấm <strong>Tự động đăng
+                                            ký</strong> ở cuối màn hình.
+                                    </div>
                                 </div>
-                            </div>
 
-                            <!-- Step 2 Two-Column Layout -->
-                            <div class="step2-layout">
-                                <!-- Left Sidebar: Selected Courses & Display Filter -->
-                                <aside class="step2-sidebar">
-                                    <!-- Selected Courses Card -->
-                                    <div class="card step2-sidebar-card">
-                                        <div class="step2-sidebar-header">
-                                            <div class="sidebar-title">
-                                                <span class="sidebar-check-icon">✓</span>
-                                                <span>MÔN ĐÃ CHỌN (<span id="step2-sidebar-count">0 MÔN</span>)</span>
+                                <!-- Step 2 Two-Column Layout -->
+                                <div class="step2-layout">
+                                    <!-- Left Sidebar: Selected Courses & Display Filter -->
+                                    <aside class="step2-sidebar">
+                                        <!-- Selected Courses Card -->
+                                        <div class="card step2-sidebar-card">
+                                            <div class="step2-sidebar-header">
+                                                <div class="sidebar-title">
+                                                    <span class="sidebar-check-icon">✓</span>
+                                                    <span>MÔN ĐÃ CHỌN (<span id="step2-sidebar-count">0
+                                                            MÔN</span>)</span>
+                                                </div>
+                                                <a href="javascript:void(0)" onclick="goToStep(1)"
+                                                    class="sidebar-back-link">Quay lại chọn thêm</a>
                                             </div>
-                                            <a href="javascript:void(0)" onclick="goToStep(1)"
-                                                class="sidebar-back-link">Quay lại chọn thêm</a>
+                                            <div id="step2-sidebar-list" class="step2-sidebar-items">
+                                                <!-- Dynamically rendered mini-cards of selected courses -->
+                                            </div>
                                         </div>
-                                        <div id="step2-sidebar-list" class="step2-sidebar-items">
-                                            <!-- Dynamically rendered mini-cards of selected courses -->
-                                        </div>
-                                    </div>
 
-                                    <!-- Filter Box Card -->
-                                    <div class="card step2-sidebar-card" style="margin-top: 16px;">
-                                        <div class="sidebar-title"
-                                            style="padding-bottom: 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                                            <span>⚙ BỘ LỌC HIỂN THỊ</span>
+                                        <!-- Filter Box Card -->
+                                        <div class="card step2-sidebar-card" style="margin-top: 16px;">
+                                            <div class="sidebar-title"
+                                                style="padding-bottom: 10px; border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
+                                                <span>⚙ BỘ LỌC HIỂN THỊ</span>
+                                            </div>
+                                            <div class="step2-filter-list">
+                                                <label class="filter-check-item">
+                                                    <input type="checkbox" id="filter-only-available"
+                                                        onchange="onStep2FilterChange()">
+                                                    <span>Ẩn các lớp đã đầy (Chỉ hiện lớp còn chỗ)</span>
+                                                </label>
+                                                <label class="filter-check-item">
+                                                    <input type="checkbox" id="filter-avoid-conflict"
+                                                        onchange="onStep2FilterChange()">
+                                                    <span>Lọc tự động tránh trùng lịch TKB</span>
+                                                </label>
+                                                <label class="filter-check-item">
+                                                    <input type="checkbox" id="filter-morning-pref"
+                                                        onchange="onStep2FilterChange()">
+                                                    <span>Ưu tiên học ca sáng (Tiết 1–5)</span>
+                                                </label>
+                                                <label class="filter-check-item">
+                                                    <input type="checkbox" id="filter-afternoon-pref"
+                                                        onchange="onStep2FilterChange()">
+                                                    <span>Ưu tiên học ca chiều (Tiết 7–12)</span>
+                                                </label>
+                                            </div>
                                         </div>
-                                        <div class="step2-filter-list">
-                                            <label class="filter-check-item">
-                                                <input type="checkbox" id="filter-only-available"
-                                                    onchange="onStep2FilterChange()">
-                                                <span>Ẩn các lớp đã đầy (Chỉ hiện lớp còn chỗ)</span>
-                                            </label>
-                                            <label class="filter-check-item">
-                                                <input type="checkbox" id="filter-avoid-conflict"
-                                                    onchange="onStep2FilterChange()">
-                                                <span>Lọc tự động tránh trùng lịch TKB</span>
-                                            </label>
-                                            <label class="filter-check-item">
-                                                <input type="checkbox" id="filter-morning-pref"
-                                                    onchange="onStep2FilterChange()">
-                                                <span>Ưu tiên học ca sáng (Tiết 1–5)</span>
-                                            </label>
-                                            <label class="filter-check-item">
-                                                <input type="checkbox" id="filter-afternoon-pref"
-                                                    onchange="onStep2FilterChange()">
-                                                <span>Ưu tiên học ca chiều (Tiết 7–12)</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </aside>
+                                    </aside>
 
-                                <!-- Right Main Content: Course Class Groups -->
-                                <section class="step2-main">
-                                    <div id="step2-classes-container">
-                                        <!-- Dynamically generated groups for each selected course -->
-                                        <div class="empty-state-card card"
-                                            style="text-align: center; padding: 60px 20px;">
-                                            <p
-                                                style="font-size: 15px; color: var(--text-secondary); margin-bottom: 12px;">
-                                                Chưa chọn môn học nào ở Bước 1</p>
-                                            <button class="btn btn-primary" onclick="goToStep(1)">➔ Quay lại Bước 1 để
-                                                chọn môn</button>
+                                    <!-- Right Main Content: Course Class Groups -->
+                                    <section class="step2-main">
+                                        <div id="step2-classes-container">
+                                            <!-- Dynamically generated groups for each selected course -->
+                                            <div class="empty-state-card card"
+                                                style="text-align: center; padding: 60px 20px;">
+                                                <p
+                                                    style="font-size: 15px; color: var(--text-secondary); margin-bottom: 12px;">
+                                                    Chưa chọn môn học nào ở Bước 1</p>
+                                                <button class="btn btn-primary" onclick="goToStep(1)">➔ Quay lại Bước 1
+                                                    để
+                                                    chọn môn</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </section>
-                            </div>
+                                    </section>
+                                </div>
                             </div><!-- /step2-content-wrapper -->
 
                             <!-- Step 2 Sticky Bottom Bar -->
@@ -459,7 +466,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Delay Max (ms)</label>
-                                    <input type="number" id="register-delay-max" value="100" min="1" step="1">
+                                    <input type="number" id="register-delay-max" value="700" min="1" step="1">
                                 </div>
                             </div>
                             <div class="form-row">
@@ -741,20 +748,23 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="event-id-input">eventId — ID sự kiện</label>
-                                    <input type="number" id="event-id-input" placeholder="Ví dụ: 114"
-                                        min="1" step="1" inputmode="numeric" aria-describedby="event-id-help">
-                                    <small id="event-id-help" class="event-help">Tự nhập ID từ Portal cho cả hai lựa chọn.</small>
+                                    <input type="number" id="event-id-input" placeholder="Ví dụ: 114" min="1" step="1"
+                                        inputmode="numeric" aria-describedby="event-id-help">
+                                    <small id="event-id-help" class="event-help">Tự nhập ID từ Portal cho cả hai lựa
+                                        chọn.</small>
                                 </div>
                                 <div id="event-manual-date-group" class="form-group" hidden>
                                     <label for="event-date-id-input">dateId — ID ngày (tùy chọn)</label>
-                                    <input type="number" id="event-date-id-input" placeholder="Để trống nếu không yêu cầu"
-                                        min="1" step="1" inputmode="numeric">
+                                    <input type="number" id="event-date-id-input"
+                                        placeholder="Để trống nếu không yêu cầu" min="1" step="1" inputmode="numeric">
                                 </div>
                                 <div class="form-group">
-                                    <label for="event-object-id-input">objectId — ID đối tượng <span id="event-object-optional" hidden>(tùy chọn)</span></label>
+                                    <label for="event-object-id-input">objectId — ID đối tượng <span
+                                            id="event-object-optional" hidden>(tùy chọn)</span></label>
                                     <input type="number" id="event-object-id-input" value="12" min="1" step="1"
                                         inputmode="numeric" aria-describedby="event-object-help">
-                                    <small id="event-object-help" class="event-help">Mặc định 12: Sinh viên hệ đào tạo chính quy. Có thể sửa trực tiếp.</small>
+                                    <small id="event-object-help" class="event-help">Mặc định 12: Sinh viên hệ đào tạo
+                                        chính quy. Có thể sửa trực tiếp.</small>
                                 </div>
                             </div>
                             <fieldset id="event-date-cards" class="event-date-fieldset">
@@ -776,7 +786,8 @@
                             </fieldset>
                             <div class="event-preview">
                                 <h4>Xem trước yêu cầu đăng ký</h4>
-                                <code id="event-endpoint-preview">POST https://portal.ut.edu.vn/api/v1/eventWeb/register?eventId=&lt;nhập eventId&gt;</code>
+                                <code
+                                    id="event-endpoint-preview">POST https://portal.ut.edu.vn/api/v1/eventWeb/register?eventId=&lt;nhập eventId&gt;</code>
                                 <pre id="event-payload-preview">Chưa có payload hợp lệ.</pre>
                                 <p id="event-validation" class="event-help" aria-live="polite"></p>
                             </div>
@@ -788,13 +799,16 @@
                                     ❌ Hủy đăng ký
                                 </button>
                             </div>
-                            <p class="event-help">Bản nháp tự lưu theo tài khoản trong tab này; tải lại trang không tự bắt đầu đăng ký.</p>
+                            <p class="event-help">Bản nháp tự lưu theo tài khoản trong tab này; tải lại trang không tự
+                                bắt đầu đăng ký.</p>
                         </div>
 
                         <div class="card">
                             <h3>Tự động đăng ký & Hẹn giờ trong tab</h3>
-                            <p class="event-browser-note">Giữ tab và trình duyệt hoạt động, máy không ngủ. Cloudflare hiện chỉ chuyển tiếp API;
-                                tiến trình này chạy trong trình duyệt. Thay đổi form áp dụng cho lần Bắt đầu tiếp theo.</p>
+                            <p class="event-browser-note">Giữ tab và trình duyệt hoạt động, máy không ngủ. Cloudflare
+                                hiện chỉ chuyển tiếp API;
+                                tiến trình này chạy trong trình duyệt. Thay đổi form áp dụng cho lần Bắt đầu tiếp theo.
+                            </p>
                             <div class="event-form-grid event-auto-grid">
                                 <div class="form-group">
                                     <label for="event-timer-input">Hẹn giờ chạy (tùy chọn)</label>
@@ -803,23 +817,30 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="event-retry-input">Số lượt thử tối đa</label>
-                                    <input type="number" id="event-retry-input" value="10" min="1" step="1" inputmode="numeric">
+                                    <input type="number" id="event-retry-input" value="10" min="1" step="1"
+                                        inputmode="numeric">
                                 </div>
                                 <div class="form-group">
                                     <label for="event-delay-min-input">Delay Min (ms)</label>
-                                    <input type="number" id="event-delay-min-input" value="100" min="1" step="1" inputmode="numeric">
+                                    <input type="number" id="event-delay-min-input" value="400" min="1" step="1"
+                                        inputmode="numeric">
                                 </div>
                                 <div class="form-group">
                                     <label for="event-delay-max-input">Delay Max (ms)</label>
-                                    <input type="number" id="event-delay-max-input" value="150" min="1" step="1" inputmode="numeric">
+                                    <input type="number" id="event-delay-max-input" value="150" min="1" step="1"
+                                        inputmode="numeric">
                                 </div>
                             </div>
-                            <p class="event-help">Chờ request hoàn tất rồi nghỉ ngẫu nhiên Min–Max mili giây trước lượt tiếp theo.
-                                Lỗi timeout/500/429 không trừ lượt: hệ thống chờ rồi tự thử lại. Khi hết phiên, tự đăng nhập lại nếu đã bật Ghi nhớ.
+                            <p class="event-help">Chờ request hoàn tất rồi nghỉ ngẫu nhiên Min–Max mili giây trước lượt
+                                tiếp theo.
+                                Lỗi timeout/500/429 không trừ lượt: hệ thống chờ rồi tự thử lại. Khi hết phiên, tự đăng
+                                nhập lại nếu đã bật Ghi nhớ.
                                 Giờ đã qua sẽ hẹn vào ngày mai (giờ trên máy).</p>
                             <div class="btn-group event-actions">
-                                <button id="event-auto-btn" class="btn btn-primary" onclick="startAutoEvent()">▶ Bắt đầu tự động</button>
-                                <button id="event-stop-btn" class="btn btn-danger" onclick="stopAutoEvent()" disabled>⏹ Dừng</button>
+                                <button id="event-auto-btn" class="btn btn-primary" onclick="startAutoEvent()">▶ Bắt đầu
+                                    tự động</button>
+                                <button id="event-stop-btn" class="btn btn-danger" onclick="stopAutoEvent()" disabled>⏹
+                                    Dừng</button>
                             </div>
                             <p id="event-run-status" role="status">Sẵn sàng</p>
                             <p id="event-run-config" class="event-help"></p>
@@ -1495,10 +1516,10 @@
                     </div>
                 </div>
 
-    <div id="toast-container" class="toast-container"></div>
-    <script src="/js/api.js?v=7.8"></script>
-    <script src="/js/app.js?v=7.8"></script>
-    <script src="/js/events.js?v=7.8"></script>
+                <div id="toast-container" class="toast-container"></div>
+                <script src="/js/api.js?v=7.8"></script>
+                <script src="/js/app.js?v=7.8"></script>
+                <script src="/js/events.js?v=7.8"></script>
 </body>
 
 </html>
